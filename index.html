@@ -1,0 +1,1061 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doorframe</title>
+<meta name="description" content="Track height, weight, birth details and milestones for your children.">
+<meta name="theme-color" content="#f3f7fa">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Doorframe">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Barlow+Condensed:wght@800&display=swap">
+<style>
+/* Layout: app shell. Sticky top bar with the child switcher, one child's record in the middle, fixed bottom tab bar. */
+:root {
+  /* Health Record: clinical blue on cool white, like a GP's growth chart */
+  --wall: #f3f7fa; --panel: #ffffff; --line: #cfdce6; --graphite: #102a43; --muted: #52687d;
+  --ruler: #0b6bcb; --ruler-ink: #ffffff;
+  --k-blue: #0b6bcb; --k-red: #c92a3c; --k-green: #138a5e; --k-violet: #6741d9; --k-orange: #c25e00;
+  --good: #138a5e; --warn: #c25e00;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 4px; --r-sm: 4px; --bw: 1px; --shadow: none; --h-tt: none; --h-ls: 0; --h-w: 600;
+  --btn: #0b6bcb; --on-btn: #ffffff;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--wall); color: var(--graphite); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 48px; display: grid; gap: 18px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; font-weight: 700; }
+.eyebrow { font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ruler); outline-offset: 2px; }
+
+header.top { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sync { font-size: .78rem; color: var(--muted); }
+
+.banner { background: var(--panel); border: 1px dashed var(--ruler); border-radius: var(--r); padding: 12px 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.banner p { margin: 0; min-width: 0; flex: 1 1 260px; font-size: .9rem; }
+
+
+/* Kid chips */
+.kids { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { border: 1.5px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 14px 6px 10px; display: inline-flex; gap: 8px; align-items: center; font-weight: 600; }
+.chip .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.chip[aria-pressed="true"] { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
+.chip.add { color: var(--muted); font-weight: 500; border-style: dashed; padding-left: 14px; }
+
+/* Child panel */
+.child { display: grid; gap: 14px; }
+.child-head { display: flex; justify-content: space-between; align-items: end; gap: 10px; flex-wrap: wrap; }
+.child-head .name { font-size: 1.6rem; line-height: 1.1; color: var(--c); font-weight: 700; letter-spacing: -0.01em; }
+dl.birth { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 16px; }
+dl.birth dt { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+dl.birth dd { margin: 2px 0 0; font-weight: 500; overflow-wrap: anywhere; }
+.tabs { display: flex; border-bottom: 1px solid var(--line); gap: 4px; overflow-x: auto; }
+.tabs button { background: none; border: 0; border-bottom: 2.5px solid transparent; padding: 9px 12px; font-weight: 600; font-size: .92rem; color: var(--muted); white-space: nowrap; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--graphite); border-bottom-color: var(--c); }
+.tabs .count { font-family: var(--f-data); font-size: .75rem; font-weight: 500; color: var(--muted); margin-left: 3px; }
+.child-head .sub { color: var(--muted); font-size: .88rem; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.stat { background: var(--panel); padding: 12px; min-width: 0; }
+.stat .v { font-family: var(--f-data); font-size: 1.25rem; font-weight: 500; margin-top: 2px; }
+.stat .v small { font-size: .75rem; color: var(--muted); }
+.stat .d { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+.stat .d.up { color: var(--good); }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { white-space: nowrap; background: none; border: 0; padding: 5px 11px; font-size: .82rem; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--graphite); color: var(--panel); }
+.chart svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--c); vertical-align: middle; margin-right: 6px; }
+
+form.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; align-items: end; }
+label.f { display: grid; gap: 3px; font-size: .74rem; color: var(--muted); font-weight: 600; letter-spacing: .02em; min-width: 0; }
+input, select, textarea { display: block; width: 100%; max-width: 100%; min-width: 0; background: var(--wall); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font-size: 16px; min-height: 42px; }
+input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; text-align: left; line-height: 1.2; }
+input::-webkit-date-and-time-value { text-align: left; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.grid2 > * { min-width: 0; }
+.grid2 .span { grid-column: 1 / -1; }
+.grid2 .btn { min-height: 44px; }
+.mlist { list-style: none; margin: 0; padding: 0; }
+.mrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.mrow:last-child { border-bottom: 0; }
+.rowbtns { display: flex; gap: 2px; align-items: center; }
+.mrow.editing, .ms.editing { background: color-mix(in srgb, var(--c, var(--k-blue)) 10%, transparent); border-radius: var(--r-sm); padding-inline: 6px; }
+form.is-editing { border: 1.5px dashed var(--c, var(--k-blue)); border-radius: var(--r-sm); padding: 10px; }
+.editing-note { margin: 0; font-size: .82rem; font-weight: 600; color: var(--c, var(--graphite)); }
+.mrow .when { min-width: 0; font-size: .9rem; }
+.mrow .meta { font-size: .76rem; color: var(--muted); }
+.mrow .vals { display: grid; grid-template-columns: 4.6em 4.2em; gap: 8px; text-align: right; font-size: .92rem; }
+.mrow .vals small { color: var(--muted); font-size: .72rem; }
+@media (max-width: 560px) {
+  .wrap { gap: 14px; padding-block: 12px 40px; }
+  .card { padding: 12px; }
+  .tabs { gap: 0; }
+  .tabs button { flex: 1; padding: 10px 4px; font-size: .86rem; }
+  .card-head .actions { width: 100%; }
+  .seg { flex: 1; } .seg button { flex: 1; }
+  .child-head .name { font-size: 1.35rem; }
+}
+textarea { resize: vertical; min-height: 40px; }
+.btn { background: var(--graphite); color: var(--panel); border: 0; border-radius: 8px; padding: 9px 14px; font-weight: 600; font-size: .9rem; }
+.btn.ghost { background: none; color: var(--graphite); border: 1px solid var(--line); }
+.btn.danger { background: var(--k-red); color: var(--panel); }
+.btn.small { padding: 5px 10px; font-size: .8rem; }
+.linkish { background: none; border: 0; color: var(--muted); font-size: .8rem; padding: 4px 6px; border-radius: 6px; }
+.linkish:hover { color: var(--graphite); }
+
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th { text-align: left; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td.n, th.n { text-align: right; font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: 0; }
+.empty { color: var(--muted); font-size: .88rem; margin: 0; }
+
+/* Milestones */
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; }
+.ms { display: grid; grid-template-columns: 74px 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.ms:last-child { border-bottom: 0; }
+.ms { grid-template-columns: minmax(0, 1fr) auto !important; }
+.ms .when { font-size: .82rem; color: var(--muted); margin-bottom: 2px; }
+.ms .age { font-family: var(--f-data); color: var(--c); font-weight: 500; }
+.ms .meta { margin-top: 4px; }
+.ms .t { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ms .meta { font-size: .78rem; color: var(--muted); }
+.ms .note { font-size: .86rem; margin-top: 2px; overflow-wrap: anywhere; }
+.tag { display: inline-block; font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-right: 6px; color: var(--muted); }
+
+/* Sheet for editing a child */
+.sheet { background: var(--panel); border: 1.5px solid var(--graphite); border-radius: var(--r); padding: 14px; display: grid; gap: 12px; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.sw { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--panel); background: var(--c); box-shadow: 0 0 0 1px var(--line); padding: 0; }
+.sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--graphite); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--graphite); color: var(--panel); padding: 9px 16px; border-radius: 8px; font-size: .88rem; max-width: calc(100% - 32px); }
+footer { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; color: var(--muted); font-size: .8rem; }
+
+/* ---------- style system: shared hooks every style can tune ---------- */
+h1, h2, .child-head .name { font-family: var(--f-display); text-transform: var(--h-tt); letter-spacing: var(--h-ls); font-weight: var(--h-w); }
+.card, .stats, .sheet, .banner { border-width: var(--bw); box-shadow: var(--shadow); }
+.chip { border-width: var(--bw); }
+.btn, .seg, input, select, textarea { border-radius: var(--r-sm); }
+.btn { background: var(--btn); color: var(--on-btn); }
+.btn.ghost { background: none; color: var(--graphite); border: var(--bw) solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--btn); color: var(--on-btn); }
+.chart svg text { font-family: var(--f-data) !important; }
+
+/* ---------- app shell ---------- */
+[hidden] { display: none !important; }
+html, body { margin: 0; min-height: 100%; }
+img { max-width: 100%; }
+body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+.appbar { position: sticky; top: 0; z-index: 10; padding-top: env(safe-area-inset-top, 0px);
+  background: linear-gradient(180deg, #d9ecfd 0%, #e9f3fc 70%, var(--wall) 100%); }
+.appbar { border-bottom: 1px solid var(--line); }
+.appbar h1 { margin: 0; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 800; font-size: 1.85rem; line-height: 1;
+  letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; color: transparent;
+  -webkit-text-stroke: 1.4px #16468f; paint-order: stroke fill; }
+@supports not (-webkit-text-stroke: 1px black) { .appbar h1 { color: #16468f; } }
+.wordmark { display: grid; min-width: 0; }
+.appbar-row { max-width: 760px; margin: 0 auto; padding: 12px 16px 6px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brandmark { width: 42px; height: 42px; flex: 0 0 auto; display: block; filter: drop-shadow(0 2px 4px rgba(22,70,143,.18)); }
+.appbar .btn.ghost { background: rgba(255,255,255,.7); }
+.appbar .kids { max-width: 760px; margin: 0 auto; padding: 6px 16px 10px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.appbar .kids::-webkit-scrollbar { display: none; }
+.kids .chip { flex: 0 0 auto; min-height: 36px; }
+.wrap { padding-block: 14px calc(96px + env(safe-area-inset-bottom, 0px)); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--panel); border-top: var(--bw) solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabbar-inner { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.tabbar button { background: none; border: 0; border-top: 3px solid transparent; padding: 9px 2px 11px; font-weight: 600; font-size: .78rem; color: var(--muted); display: grid; gap: 1px; justify-items: center; min-height: 56px; }
+.tabbar button[aria-selected="true"] { color: var(--graphite); border-top-color: var(--c, var(--btn)); }
+.tabbar button { gap: 3px; padding: 8px 2px 9px; }
+.tabbar .ti { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tabbar button[aria-selected="true"] { color: #16468f; }
+.tabbar button[aria-selected="true"] .ti { stroke: #16468f; fill: color-mix(in srgb, var(--c, #0b6bcb) 16%, transparent); stroke-width: 1.9; }
+.toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 30; }
+
+/* Full-screen panels: add/edit child, settings */
+#sheetHost:not(:empty), .panel { position: fixed; inset: 0; z-index: 20; background: var(--wall); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px calc(env(safe-area-inset-bottom, 0px) + 28px); }
+#sheetHost .sheet, .panel-inner { max-width: 760px; margin: 0 auto; }
+.panel-inner { display: grid; gap: 14px; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.panel-head h2 { font-size: 1.25rem; }
+.setting-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.setting-row p { margin: 0; flex: 1 1 220px; min-width: 0; font-size: .88rem; color: var(--muted); }
+.setting-row p strong { color: var(--graphite); }
+.stack { display: grid; gap: 8px; }
+.hint { margin: 0; font-size: .82rem; color: var(--muted); }
+.updatebar { position: fixed; left: 16px; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 31; max-width: 520px; margin: 0 auto; background: var(--graphite); color: var(--panel); border-radius: var(--r); padding: 10px 12px 10px 16px; display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: .9rem; }
+.updatebar .btn { background: var(--panel); color: var(--graphite); }
+body.no-kids .tabbar { display: none; }
+@media (display-mode: standalone) { .browser-only { display: none !important; } }
+
+/* ---------- v1.4 features ---------- */
+.chip .due { width: 8px; height: 8px; border-radius: 50%; background: var(--k-orange); box-shadow: 0 0 0 2px var(--panel); }
+.chip.batch { color: var(--k-blue); border-color: color-mix(in srgb, var(--k-blue) 45%, var(--line)); }
+.due-banner { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: color-mix(in srgb, var(--k-orange) 9%, var(--panel)); border: 1px solid color-mix(in srgb, var(--k-orange) 40%, var(--line)); border-radius: var(--r); padding: 10px 12px; }
+.due-banner p { margin: 0; flex: 1 1 200px; min-width: 0; font-size: .9rem; }
+.stat .pct { display: inline-block; margin-top: 5px; font-size: .72rem; font-weight: 600; color: var(--c); background: color-mix(in srgb, var(--c) 10%, transparent); border-radius: 999px; padding: 1px 8px; }
+.hint { margin: 0; font-size: .8rem; color: var(--muted); }
+.cmp { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.cmp th, .cmp td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.cmp th { font-size: .78rem; font-weight: 700; }
+.cmp th:first-child, .cmp td:first-child { text-align: left; font-family: var(--f-body); }
+.cmp td { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.cmp td.ap { color: var(--muted); }
+.cmp tr:last-child td { border-bottom: 0; }
+.mrow .vals { grid-template-columns: 5em 4.8em; }
+.mrow .vals .num { display: grid; justify-items: end; }
+.mrow .vals .pc { font-family: var(--f-body); font-size: .66rem; color: var(--muted); }
+.sizes-now { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.size-tile { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px; background: var(--wall); min-width: 0; }
+.size-tile .l { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.size-tile .v { font-family: var(--f-data); font-size: 1.25rem; font-weight: 500; overflow-wrap: anywhere; }
+.size-tile .d { font-size: .72rem; color: var(--muted); }
+.mouthwrap { display: grid; place-items: center; }
+.mouth { width: 100%; max-width: 360px; height: auto; display: block; touch-action: manipulation; }
+.mouth .lab { font-family: var(--f-body); font-size: 11px; font-weight: 600; fill: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.mouth .sub { font-family: var(--f-body); font-size: 10px; fill: var(--muted); opacity: .8; }
+.tth { cursor: pointer; outline: none; }
+.tth rect { fill: var(--panel); stroke: #9fb4c8; stroke-width: 1.5; transition: fill .15s; }
+.tth.in rect { fill: color-mix(in srgb, var(--c) 22%, var(--panel)); stroke: var(--c); stroke-width: 2; }
+.tth.out rect { fill: var(--wall); stroke: var(--muted); stroke-dasharray: 3 2.5; }
+.tth .x { stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; fill: none; }
+.tth.sel rect, .tth:focus-visible rect { stroke: #16468f; stroke-width: 3; }
+.tlegend { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; font-size: .78rem; color: var(--muted); }
+.tlegend span { display: inline-flex; align-items: center; gap: 6px; }
+.tlegend .lg { width: 14px; height: 16px; border-radius: 4px; border: 1.5px solid #9fb4c8; background: var(--panel); display: inline-block; }
+.tlegend .lg.in { background: color-mix(in srgb, var(--c) 22%, var(--panel)); border-color: var(--c); }
+.tlegend .lg.out { background: var(--wall); border: 1.5px dashed var(--muted); }
+.status-late { color: var(--warn); font-weight: 600; }
+.batch { display: grid; gap: 10px; }
+.brow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px; background: var(--panel); }
+.bname { grid-column: 1 / -1; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.bname .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c); margin-right: 7px; }
+.bname small { font-weight: 500; color: var(--muted); font-size: .76rem; }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-row">
+    <div class="brand"><svg class="brandmark" viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="230" fill="#A9D5F9"/><path d="M282 836V184H794V836Z" fill="#C6E2FD"/><path d="M360 836V250H734V836Z" fill="#E7F3FC"/><path d="M282 836V184H794V836" fill="none" stroke="#16468F" stroke-width="40" stroke-linejoin="round"/><path d="M360 836V250H734V836" fill="none" stroke="#16468F" stroke-width="30" stroke-linejoin="round"/><path d="M120 836H904" stroke="#16468F" stroke-width="40" stroke-linecap="round"/><g stroke="#16468F" stroke-width="36" stroke-linecap="round"><path d="M610 350H690"/><path d="M650 470H690"/><path d="M610 590H690"/><path d="M650 710H690"/></g></svg><div class="wordmark"><h1 aria-label="Doorframe">DOORFRAME</h1></div></div>
+    <button class="btn small ghost" type="button" id="settingsBtn">Settings</button>
+  </div>
+  <nav class="kids" id="kids" aria-label="Choose a child"></nav>
+</header>
+
+<div class="wrap">
+  <div class="banner" id="exampleBanner" hidden>
+    <p>These are <strong>example profiles</strong> so you can see how it works. Rename them and fix their birthdays, or clear them and add your own.</p>
+    <div class="actions">
+      <button class="btn small ghost" id="keepExamples" type="button">Keep and edit</button>
+      <button class="btn small" id="clearExamples" type="button">Clear examples</button>
+    </div>
+  </div>
+
+  <main class="child" id="child"></main>
+</div>
+
+<nav class="tabbar" aria-label="Sections"><div class="tabbar-inner" id="tabbar" role="tablist"></div></nav>
+
+<div id="sheetHost"></div>
+
+<section class="panel" id="settings" hidden aria-label="Settings">
+  <div class="panel-inner">
+    <div class="panel-head"><h2>Settings</h2><button class="btn small" type="button" id="closeSettings">Done</button></div>
+
+    <section class="card browser-only" id="installCard">
+      <h2>Install the app</h2>
+      <div class="setting-row" id="installRow">
+        <p id="installText">Add Doorframe to your home screen so it opens full screen and works offline.</p>
+        <button class="btn small" type="button" id="installBtn" hidden>Install</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Measuring reminders</h2>
+      <div class="setting-row">
+        <p>Show a reminder when a child hasn't been measured for a while.</p>
+        <label class="f" for="remindSel" style="min-width:150px">Remind after<select id="remindSel">
+          <option value="0">Never</option><option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Your data</h2>
+      <p class="hint" id="dataSummary"></p>
+      <p class="hint" id="storageNote">Everything is stored on this device only. Save a backup now and then so nothing is lost if you change phones.</p>
+      <div class="actions">
+        <button class="btn small" type="button" id="saveBackup">Save backup file</button>
+        <button class="btn small ghost" type="button" id="copyBackup">Copy backup</button>
+        <label class="btn small ghost" for="importFile" style="cursor:pointer">Restore from file</label>
+        <input id="importFile" type="file" accept="application/json,.json,text/plain" hidden>
+      </div>
+      <div class="stack">
+        <label class="f" for="pasteBackup">Paste a backup (from the Claude version or another device)<textarea id="pasteBackup" rows="3" placeholder='{"app":"doorframe", ...}'></textarea></label>
+        <div><button class="btn small ghost" type="button" id="restorePaste">Restore pasted backup</button></div>
+      </div>
+      <div class="setting-row">
+        <p>Remove every child and entry from this device.</p>
+        <button class="btn small ghost" type="button" id="wipeAll">Delete all data</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>About</h2>
+      <div class="setting-row">
+        <p>Doorframe <span class="num" id="appVersion"></span>. Works offline once installed.</p>
+        <button class="btn small ghost" type="button" id="checkUpdate">Check for updates</button>
+      </div>
+    </section>
+  </div>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+<div class="updatebar" id="updateBar" hidden><span>A new version is ready.</span><button class="btn small" type="button" id="updateNow">Update</button></div>
+
+<script>
+// Growth reference: WHO 2006 (0–2 years) and CDC 2000 (2–20 years), LMS parameters [age, L, M, S]
+const GROWTH_REF={"h":{"m":[[0.0,1.0,49.8842,0.03795],[0.0833,1.0,54.6645,0.03559],[0.1667,1.0,58.4384,0.03423],[0.25,1.0,61.4013,0.03329],[0.3333,1.0,63.9041,0.03257],[0.4167,1.0,65.8912,0.03204],[0.5,1.0,67.6435,0.03165],[0.5833,1.0,69.1615,0.03139],[0.6667,1.0,70.5764,0.03124],[0.75,1.0,71.9714,0.03117],[0.8333,1.0,73.2653,0.03118],[0.9167,1.0,74.5464,0.03125],[1.0,1.0,75.7391,0.03137],[1.0833,1.0,76.9304,0.03154],[1.1667,1.0,78.0451,0.03174],[1.25,1.0,79.1613,0.03197],[1.3333,1.0,80.2113,0.03222],[1.4167,1.0,81.234,0.03249],[1.5,1.0,82.2628,0.03279],[1.5833,1.0,83.2318,0.0331],[1.6667,1.0,84.2074,0.03342],[1.75,1.0,85.1291,0.03375],[1.8333,1.0,86.0589,0.0341],[1.9167,1.0,86.9392,0.03445],[2,0.94152,86.4522,0.04032],[2.0417,1.00721,86.8616,0.0404],[2.125,0.83725,87.6525,0.04058],[2.2083,0.68149,88.4233,0.04072],[2.2917,0.53878,89.1755,0.04083],[2.375,0.4077,89.9104,0.04091],[2.4583,0.28676,90.6291,0.04095],[2.5417,0.17449,91.3324,0.04097],[2.625,0.06944,92.0213,0.04095],[2.7083,-0.02972,92.6964,0.04091],[2.7917,-0.12425,93.3585,0.04084],[2.875,-0.21529,94.0082,0.04076],[2.9583,-0.30385,94.6464,0.04065],[3.0417,-0.39092,95.2736,0.04053],[3.125,-0.2548,95.9147,0.04057],[3.2083,-0.12565,96.5473,0.04062],[3.2917,-0.00317,97.1719,0.04067],[3.375,0.11291,97.789,0.04072],[3.4583,0.22275,98.399,0.04078],[3.5417,0.32653,99.0025,0.04085],[3.625,0.42436,99.6,0.04092],[3.7083,0.51635,100.1918,0.041],[3.7917,0.6026,100.7783,0.04108],[3.875,0.68317,101.36,0.04116],[3.9583,0.75816,101.9373,0.04125],[4.0417,0.82764,102.5105,0.04134],[4.125,0.89169,103.0799,0.04144],[4.2083,0.95039,103.6459,0.04154],[4.2917,1.00383,104.2087,0.04164],[4.375,1.05214,104.7687,0.04174],[4.4583,1.09537,105.3262,0.04185],[4.5417,1.13365,105.8813,0.04196],[4.625,1.1671,106.4343,0.04206],[4.7083,1.19585,106.9855,0.04217],[4.7917,1.22,107.535,0.04228],[4.875,1.23972,108.083,0.04238],[4.9583,1.25512,108.6296,0.04249],[5.0417,1.26637,109.1751,0.04259],[5.125,1.27361,109.7196,0.0427],[5.2083,1.277,110.2631,0.0428],[5.2917,1.2767,110.8058,0.0429],[5.375,1.27289,111.3477,0.04299],[5.4583,1.26573,111.889,0.04309],[5.5417,1.2554,112.4296,0.04318],[5.625,1.24209,112.9696,0.04327],[5.7083,1.22598,113.509,0.04336],[5.7917,1.20726,114.0479,0.04344],[5.875,1.18614,114.5861,0.04352],[5.9583,1.1628,115.1238,0.0436],[6.0417,1.13744,115.6609,0.04367],[6.125,1.11029,116.1973,0.04375],[6.2083,1.08154,116.7329,0.04382],[6.2917,1.0514,117.2678,0.04388],[6.375,1.0201,117.8018,0.04395],[6.4583,0.98785,118.3348,0.04401],[6.5417,0.95485,118.8668,0.04407],[6.625,0.92133,119.3977,0.04413],[6.7083,0.88751,119.9272,0.04418],[6.7917,0.85358,120.4554,0.04424],[6.875,0.81976,120.9821,0.0443],[6.9583,0.78625,121.5072,0.04435],[7.0417,0.75324,122.0305,0.0444],[7.125,0.72094,122.552,0.04446],[7.2083,0.68952,123.0714,0.04451],[7.2917,0.65914,123.5886,0.04457],[7.375,0.63,124.1035,0.04462],[7.4583,0.6022,124.616,0.04468],[7.5417,0.57591,125.1259,0.04474],[7.625,0.55123,125.6331,0.0448],[7.7083,0.52828,126.1374,0.04486],[7.7917,0.50714,126.6388,0.04492],[7.875,0.4879,127.137,0.04499],[7.9583,0.47059,127.632,0.04506],[8.0417,0.45527,128.1237,0.04513],[8.125,0.44195,128.6119,0.0452],[8.2083,0.43063,129.0966,0.04528],[8.2917,0.42129,129.5777,0.04536],[8.375,0.41391,130.055,0.04544],[8.4583,0.40843,130.5286,0.04553],[8.5417,0.40478,130.9983,0.04562],[8.625,0.40288,131.4641,0.04571],[8.7083,0.40263,131.926,0.04581],[8.7917,0.40391,132.384,0.04591],[8.875,0.40661,132.8381,0.04601],[8.9583,0.41058,133.2882,0.04611],[9.0417,0.41569,133.7345,0.04622],[9.125,0.42177,134.1769,0.04633],[9.2083,0.42866,134.6155,0.04644],[9.2917,0.43621,135.0504,0.04655],[9.375,0.44423,135.4818,0.04666],[9.4583,0.45256,135.9097,0.04678],[9.5417,0.46103,136.3343,0.0469],[9.625,0.46947,136.7557,0.04701],[9.7083,0.4777,137.1742,0.04713],[9.7917,0.48558,137.5899,0.04725],[9.875,0.49295,138.0032,0.04737],[9.9583,0.49965,138.4143,0.04749],[10.0417,0.50556,138.8234,0.04761],[10.125,0.51056,139.231,0.04773],[10.2083,0.51453,139.6373,0.04785],[10.2917,0.51738,140.0427,0.04796],[10.375,0.51904,140.4477,0.04808],[10.4583,0.51945,140.8527,0.04819],[10.5417,0.51859,141.2582,0.0483],[10.625,0.51643,141.6646,0.04841],[10.7083,0.51301,142.0725,0.04852],[10.7917,0.50835,142.4824,0.04863],[10.875,0.50255,142.8949,0.04874],[10.9583,0.4957,143.3107,0.04884],[11.0417,0.48794,143.7304,0.04894],[11.125,0.47945,144.1545,0.04904],[11.2083,0.47044,144.5838,0.04913],[11.2917,0.46115,145.019,0.04922],[11.375,0.45186,145.4607,0.04931],[11.4583,0.44289,145.9097,0.0494],[11.5417,0.43458,146.3665,0.04949],[11.625,0.4273,146.832,0.04957],[11.7083,0.42146,147.3066,0.04965],[11.7917,0.41748,147.7911,0.04973],[11.875,0.41577,148.2859,0.04981],[11.9583,0.41678,148.7917,0.04988],[12.0417,0.42092,149.3088,0.04995],[12.125,0.42861,149.8376,0.05001],[12.2083,0.44022,150.3784,0.05008],[12.2917,0.4561,150.9313,0.05013],[12.375,0.47654,151.4964,0.05019],[12.4583,0.50177,152.0735,0.05023],[12.5417,0.53195,152.6624,0.05027],[12.625,0.56718,153.2627,0.05031],[12.7083,0.60746,153.8738,0.05033],[12.7917,0.6527,154.4951,0.05035],[12.875,0.70276,155.1255,0.05036],[12.9583,0.75738,155.7642,0.05035],[13.0417,0.81624,156.4099,0.05033],[13.125,0.87895,157.0612,0.0503],[13.2083,0.94505,157.7168,0.05026],[13.2917,1.01405,158.3751,0.0502],[13.375,1.08538,159.0344,0.05013],[13.4583,1.15849,159.6931,0.05003],[13.5417,1.23277,160.3493,0.04993],[13.625,1.30763,161.0015,0.0498],[13.7083,1.38247,161.6478,0.04966],[13.7917,1.45672,162.2865,0.04951],[13.875,1.52981,162.9161,0.04933],[13.9583,1.60122,163.535,0.04915],[14.0417,1.67043,164.1418,0.04895],[14.125,1.737,164.7352,0.04873],[14.2083,1.80048,165.314,0.0485],[14.2917,1.86052,165.8771,0.04827],[14.375,1.91677,166.4236,0.04802],[14.4583,1.96893,166.9528,0.04777],[14.5417,2.01678,167.4641,0.04751],[14.625,2.06011,167.9571,0.04724],[14.7083,2.09877,168.4313,0.04697],[14.7917,2.13264,168.8867,0.0467],[14.875,2.16168,169.3231,0.04643],[14.9583,2.18585,169.7405,0.04616],[15.0417,2.20518,170.1393,0.04589],[15.125,2.21973,170.5195,0.04562],[15.2083,2.22959,170.8815,0.04536],[15.2917,2.23491,171.2257,0.0451],[15.375,2.23583,171.5525,0.04485],[15.4583,2.23257,171.8626,0.0446],[15.5417,2.22533,172.1563,0.04436],[15.625,2.21435,172.4343,0.04413],[15.7083,2.19991,172.6972,0.0439],[15.7917,2.18226,172.9456,0.04369],[15.875,2.1617,173.1801,0.04348],[15.9583,2.13852,173.4014,0.04328],[16.0417,2.11302,173.6101,0.04309],[16.125,2.08549,173.8067,0.0429],[16.2083,2.05622,173.992,0.04273],[16.2917,2.0255,174.1665,0.04256],[16.375,1.9936,174.3308,0.0424],[16.4583,1.96079,174.4854,0.04225],[16.5417,1.92732,174.631,0.04211],[16.625,1.89343,174.768,0.04197],[16.7083,1.85934,174.8969,0.04185],[16.7917,1.82525,175.0182,0.04173],[16.875,1.79134,175.1323,0.04161],[16.9583,1.75779,175.2398,0.04151],[17.0417,1.72474,175.341,0.04141],[17.125,1.69232,175.4362,0.04132],[17.2083,1.66066,175.5259,0.04123],[17.2917,1.62985,175.6104,0.04115],[17.375,1.59996,175.6901,0.04107],[17.4583,1.57108,175.7652,0.041],[17.5417,1.54325,175.836,0.04094],[17.625,1.51652,175.9028,0.04088],[17.7083,1.49091,175.9658,0.04082],[17.7917,1.46645,176.0254,0.04077],[17.875,1.44315,176.0816,0.04073],[17.9583,1.421,176.1348,0.04068],[18.0417,1.4,176.185,0.04064],[18.125,1.38014,176.2326,0.04061],[18.2083,1.3614,176.2776,0.04058],[18.2917,1.34376,176.3202,0.04055],[18.375,1.3272,176.3606,0.04052],[18.4583,1.31167,176.3989,0.0405],[18.5417,1.29715,176.4352,0.04047],[18.625,1.2836,176.4697,0.04046],[18.7083,1.27099,176.5024,0.04044],[18.7917,1.25928,176.5335,0.04042],[18.875,1.24844,176.563,0.04041],[18.9583,1.23841,176.5911,0.0404],[19.0417,1.22916,176.6179,0.04039],[19.125,1.22066,176.6433,0.04038],[19.2083,1.21287,176.6676,0.04038],[19.2917,1.20574,176.6907,0.04037],[19.375,1.19925,176.7127,0.04037],[19.4583,1.19335,176.7337,0.04037],[19.5417,1.18802,176.7538,0.04036],[19.625,1.18321,176.773,0.04036],[19.7083,1.1789,176.7913,0.04036],[19.7917,1.17506,176.8088,0.04036],[19.875,1.17164,176.8255,0.04037],[19.9583,1.16864,176.8415,0.04037],[20,1.16728,176.8492,0.04037]],"f":[[0.0,1.0,49.1477,0.0379],[0.0833,1.0,53.6326,0.03641],[0.1667,1.0,57.0796,0.03568],[0.25,1.0,59.7773,0.0352],[0.3333,1.0,62.1071,0.03486],[0.4167,1.0,64.019,0.03463],[0.5,1.0,65.751,0.03448],[0.5833,1.0,67.2842,0.03441],[0.6667,1.0,68.7264,0.0344],[0.75,1.0,70.1463,0.03444],[0.8333,1.0,71.4656,0.03452],[0.9167,1.0,72.7788,0.03464],[1.0,1.0,74.0049,0.03479],[1.0833,1.0,75.2297,0.03496],[1.1667,1.0,76.377,0.03514],[1.25,1.0,77.5258,0.03534],[1.3333,1.0,78.6055,0.03555],[1.4167,1.0,79.6559,0.03576],[1.5,1.0,80.7121,0.03598],[1.5833,1.0,81.708,0.0362],[1.6667,1.0,82.7116,0.03643],[1.75,1.0,83.6595,0.03665],[1.8333,1.0,84.6154,0.03689],[1.9167,1.0,85.5184,0.03711],[2,1.07245,84.9756,0.04079],[2.0417,1.05127,85.3973,0.04086],[2.125,1.04195,86.2903,0.04114],[2.2083,1.01259,87.1571,0.04135],[2.2917,0.97054,87.996,0.0415],[2.375,0.92113,88.8055,0.04161],[2.4583,0.86822,89.5848,0.04169],[2.5417,0.81454,90.3334,0.04175],[2.625,0.76196,91.0515,0.0418],[2.7083,0.71166,91.7396,0.04185],[2.7917,0.66432,92.3985,0.04189],[2.875,0.62029,93.0295,0.04193],[2.9583,0.57956,93.6338,0.04197],[3.0417,0.54198,94.2134,0.04202],[3.125,0.51143,94.7964,0.0421],[3.2083,0.4828,95.3739,0.0422],[3.2917,0.45552,95.9469,0.0423],[3.375,0.42915,96.5164,0.04241],[3.4583,0.40335,97.0834,0.04251],[3.5417,0.37788,97.6485,0.04262],[3.625,0.35256,98.2125,0.04273],[3.7083,0.32727,98.7759,0.04284],[3.7917,0.30196,99.3394,0.04295],[3.875,0.27658,99.9033,0.04305],[3.9583,0.25116,100.4681,0.04316],[4.0417,0.22571,101.0339,0.04326],[4.125,0.20027,101.6012,0.04336],[4.2083,0.17491,102.17,0.04346],[4.2917,0.1497,102.7406,0.04355],[4.375,0.12471,103.313,0.04364],[4.4583,0.10001,103.8873,0.04373],[4.5417,0.0757,104.4635,0.04382],[4.625,0.05185,105.0415,0.0439],[4.7083,0.02854,105.6213,0.04398],[4.7917,0.00585,106.2029,0.04406],[4.875,-0.01613,106.7861,0.04413],[4.9583,-0.03735,107.3707,0.04421],[5.0417,-0.05773,107.9566,0.04428],[5.125,-0.07721,108.5436,0.04434],[5.2083,-0.09572,109.1316,0.04441],[5.2917,-0.11323,109.7202,0.04447],[5.375,-0.12967,110.3092,0.04454],[5.4583,-0.145,110.8984,0.0446],[5.5417,-0.1592,111.4876,0.04465],[5.625,-0.17222,112.0764,0.04471],[5.7083,-0.18405,112.6646,0.04476],[5.7917,-0.19466,113.2519,0.04482],[5.875,-0.20403,113.838,0.04487],[5.9583,-0.21217,114.4226,0.04492],[6.0417,-0.21907,115.0055,0.04496],[6.125,-0.22472,115.5863,0.04501],[6.2083,-0.22914,116.1648,0.04506],[6.2917,-0.23234,116.7406,0.0451],[6.375,-0.23432,117.3136,0.04514],[6.4583,-0.23513,117.8833,0.04519],[6.5417,-0.23477,118.4496,0.04523],[6.625,-0.23329,119.0123,0.04527],[6.7083,-0.2307,119.571,0.04531],[6.7917,-0.22706,120.1254,0.04535],[6.875,-0.2224,120.6755,0.04538],[6.9583,-0.21677,121.221,0.04542],[7.0417,-0.21021,121.7617,0.04546],[7.125,-0.20277,122.2974,0.0455],[7.2083,-0.19452,122.8279,0.04554],[7.2917,-0.18549,123.3531,0.04558],[7.375,-0.17574,123.8728,0.04561],[7.4583,-0.16535,124.387,0.04565],[7.5417,-0.15436,124.8956,0.04569],[7.625,-0.14283,125.3985,0.04574],[7.7083,-0.13083,125.8956,0.04578],[7.7917,-0.11842,126.3869,0.04582],[7.875,-0.10565,126.8724,0.04587],[7.9583,-0.09258,127.3522,0.04592],[8.0417,-0.07928,127.8263,0.04597],[8.125,-0.0658,128.2947,0.04602],[8.2083,-0.05218,128.7576,0.04608],[8.2917,-0.03848,129.2152,0.04614],[8.375,-0.02473,129.6675,0.0462],[8.4583,-0.01098,130.1148,0.04627],[8.5417,0.00274,130.5574,0.04634],[8.625,0.01643,130.9954,0.04642],[8.7083,0.03005,131.4293,0.0465],[8.7917,0.04362,131.8593,0.04659],[8.875,0.05714,132.2859,0.04668],[8.9583,0.07064,132.7094,0.04678],[9.0417,0.08415,133.1304,0.04688],[9.125,0.09773,133.5493,0.047],[9.2083,0.11145,133.9667,0.04712],[9.2917,0.1254,134.3832,0.04724],[9.375,0.13969,134.7995,0.04738],[9.4583,0.15445,135.2163,0.04752],[9.5417,0.16981,135.6342,0.04767],[9.625,0.18593,136.054,0.04783],[9.7083,0.20301,136.4766,0.04799],[9.7917,0.22123,136.9027,0.04816],[9.875,0.24078,137.3333,0.04834],[9.9583,0.26189,137.7691,0.04852],[10.0417,0.28475,138.2112,0.0487],[10.125,0.30958,138.6602,0.04889],[10.2083,0.33657,139.1172,0.04908],[10.2917,0.36589,139.5829,0.04927],[10.375,0.3977,140.0581,0.04946],[10.4583,0.4321,140.5435,0.04964],[10.5417,0.46918,141.0397,0.04981],[10.625,0.50894,141.5472,0.04998],[10.7083,0.55135,142.0664,0.05013],[10.7917,0.59631,142.5974,0.05026],[10.875,0.64363,143.1404,0.05037],[10.9583,0.69306,143.695,0.05046],[11.0417,0.74429,144.2609,0.05052],[11.125,0.79691,144.8376,0.05056],[11.2083,0.85046,145.424,0.05056],[11.2917,0.9044,146.0192,0.05053],[11.375,0.95814,146.6217,0.05046],[11.4583,1.01105,147.23,0.05035],[11.5417,1.06247,147.8424,0.05021],[11.625,1.11173,148.4569,0.05003],[11.7083,1.15814,149.0714,0.04981],[11.7917,1.20105,149.6839,0.04955],[11.875,1.23985,150.292,0.04926],[11.9583,1.27401,150.8936,0.04894],[12.0417,1.30304,151.4866,0.0486],[12.125,1.32661,152.0687,0.04823],[12.2083,1.34444,152.6381,0.04784],[12.2917,1.35644,153.193,0.04744],[12.375,1.3626,153.7317,0.04703],[12.4583,1.36309,154.2529,0.04662],[12.5417,1.35816,154.7555,0.0462],[12.625,1.34823,155.2385,0.04578],[12.7083,1.33377,155.7012,0.04537],[12.7917,1.31537,156.1432,0.04498],[12.875,1.29366,156.5643,0.04459],[12.9583,1.2693,156.9644,0.04422],[13.0417,1.24297,157.3437,0.04386],[13.125,1.21531,157.7025,0.04352],[13.2083,1.18696,158.0411,0.0432],[13.2917,1.15847,158.3603,0.0429],[13.375,1.13037,158.6606,0.04262],[13.4583,1.10308,158.9427,0.04236],[13.5417,1.07697,159.2075,0.04211],[13.625,1.05233,159.4557,0.04189],[13.7083,1.02937,159.6882,0.04168],[13.7917,1.00825,159.9058,0.0415],[13.875,0.98906,160.1094,0.04132],[13.9583,0.97184,160.2997,0.04117],[14.0417,0.95657,160.4777,0.04102],[14.125,0.94324,160.6441,0.04089],[14.2083,0.93177,160.7995,0.04078],[14.2917,0.92206,160.9449,0.04067],[14.375,0.91401,161.0808,0.04057],[14.4583,0.90752,161.2079,0.04049],[14.5417,0.90245,161.3268,0.04041],[14.625,0.8987,161.4381,0.04034],[14.7083,0.89614,161.5423,0.04028],[14.7917,0.89466,161.6399,0.04022],[14.875,0.89414,161.7315,0.04017],[14.9583,0.89448,161.8174,0.04012],[15.0417,0.89557,161.898,0.04008],[15.125,0.89733,161.9738,0.04005],[15.2083,0.89967,162.045,0.04001],[15.2917,0.90252,162.112,0.03998],[15.375,0.90579,162.1752,0.03996],[15.4583,0.90944,162.2347,0.03993],[15.5417,0.9134,162.2908,0.03991],[15.625,0.91761,162.3439,0.03989],[15.7083,0.92205,162.394,0.03988],[15.7917,0.92665,162.4414,0.03986],[15.875,0.93139,162.4862,0.03985],[15.9583,0.93623,162.5287,0.03983],[16.0417,0.94115,162.569,0.03982],[16.125,0.94611,162.6072,0.03981],[16.2083,0.95111,162.6435,0.0398],[16.2917,0.95612,162.6781,0.03979],[16.375,0.96112,162.7109,0.03978],[16.4583,0.96609,162.7421,0.03977],[16.5417,0.97104,162.7719,0.03977],[16.625,0.97594,162.8002,0.03976],[16.7083,0.98079,162.8273,0.03975],[16.7917,0.98557,162.8531,0.03975],[16.875,0.99029,162.8778,0.03974],[16.9583,0.99494,162.9013,0.03974],[17.0417,0.99951,162.9238,0.03973],[17.125,1.00399,162.9454,0.03973],[17.2083,1.0084,162.966,0.03972],[17.2917,1.01272,162.9858,0.03972],[17.375,1.01695,163.0047,0.03971],[17.4583,1.02109,163.0228,0.03971],[17.5417,1.02514,163.0402,0.03971],[17.625,1.0291,163.0569,0.0397],[17.7083,1.03298,163.0729,0.0397],[17.7917,1.03676,163.0882,0.0397],[17.875,1.04045,163.103,0.03969],[17.9583,1.04406,163.1172,0.03969],[18.0417,1.04757,163.1308,0.03969],[18.125,1.051,163.1439,0.03968],[18.2083,1.05434,163.1565,0.03968],[18.2917,1.0576,163.1686,0.03968],[18.375,1.06077,163.1802,0.03968],[18.4583,1.06386,163.1914,0.03967],[18.5417,1.06687,163.2022,0.03967],[18.625,1.0698,163.2126,0.03967],[18.7083,1.07266,163.2226,0.03967],[18.7917,1.07543,163.2322,0.03966],[18.875,1.07813,163.2415,0.03966],[18.9583,1.08076,163.2504,0.03966],[19.0417,1.08332,163.259,0.03966],[19.125,1.0858,163.2673,0.03966],[19.2083,1.08822,163.2753,0.03965],[19.2917,1.09057,163.283,0.03965],[19.375,1.09285,163.2904,0.03965],[19.4583,1.09507,163.2976,0.03965],[19.5417,1.09723,163.3045,0.03965],[19.625,1.09933,163.3111,0.03964],[19.7083,1.10136,163.3175,0.03964],[19.7917,1.10334,163.3237,0.03964],[19.875,1.10526,163.3297,0.03964],[19.9583,1.10713,163.3354,0.03964],[20,1.10805,163.3383,0.03964]]},"w":{"m":[[0.0,0.3487,3.3464,0.14602],[0.0833,0.2303,4.4525,0.13413],[0.1667,0.1969,5.5714,0.12382],[0.25,0.174,6.369,0.11732],[0.3333,0.1551,7.0069,0.11313],[0.4167,0.1396,7.5077,0.11081],[0.5,0.1256,7.9389,0.10957],[0.5833,0.1134,8.2963,0.10902],[0.6667,0.1023,8.6102,0.10882],[0.75,0.0917,8.9019,0.10881],[0.8333,0.0821,9.1618,0.1089],[0.9167,0.0729,9.4136,0.10906],[1.0,0.0645,9.646,0.10925],[1.0833,0.0563,9.8772,0.10949],[1.1667,0.0487,10.0944,0.10976],[1.25,0.0412,10.3139,0.11008],[1.3333,0.0343,10.5228,0.11041],[1.4167,0.0276,10.7289,0.11078],[1.5,0.021,10.9393,0.1112],[1.5833,0.0149,11.1409,0.11163],[1.6667,0.0087,11.3478,0.11212],[1.75,0.0029,11.5474,0.11261],[1.8333,-0.0029,11.7528,0.11315],[1.9167,-0.0083,11.951,0.11369],[2,-0.20615,12.6708,0.10813],[2.0417,-0.2165,12.7415,0.10817],[2.125,-0.23979,12.881,0.10827],[2.2083,-0.26632,13.0184,0.10842],[2.2917,-0.29575,13.1545,0.1086],[2.375,-0.32773,13.2899,0.10883],[2.4583,-0.36182,13.4252,0.10908],[2.5417,-0.39757,13.5609,0.10938],[2.625,-0.43452,13.6974,0.10971],[2.7083,-0.47219,13.835,0.11007],[2.7917,-0.51012,13.9742,0.11047],[2.875,-0.54789,14.115,0.11091],[2.9583,-0.58507,14.2578,0.11137],[3.0417,-0.62132,14.4026,0.11187],[3.125,-0.6563,14.5496,0.11241],[3.2083,-0.68974,14.6989,0.11297],[3.2917,-0.72141,14.8505,0.11356],[3.375,-0.75118,15.0045,0.11418],[3.4583,-0.7789,15.1608,0.11482],[3.5417,-0.80452,15.3194,0.11549],[3.625,-0.828,15.4803,0.11619],[3.7083,-0.84938,15.6434,0.1169],[3.7917,-0.8687,15.8087,0.11764],[3.875,-0.88603,15.9761,0.1184],[3.9583,-0.90151,16.1455,0.11917],[4.0417,-0.91524,16.3168,0.11996],[4.125,-0.92738,16.4899,0.12075],[4.2083,-0.93807,16.6647,0.12157],[4.2917,-0.94748,16.8411,0.12238],[4.375,-0.95577,17.019,0.12321],[4.4583,-0.9631,17.1984,0.12404],[4.5417,-0.96963,17.3791,0.12488],[4.625,-0.97553,17.561,0.12572],[4.7083,-0.98094,17.744,0.12655],[4.7917,-0.98601,17.9281,0.12739],[4.875,-0.99087,18.1132,0.12822],[4.9583,-0.99564,18.2991,0.12905],[5.0417,-1.00045,18.4859,0.12988],[5.125,-1.0054,18.6735,0.1307],[5.2083,-1.01058,18.8618,0.13151],[5.2917,-1.01606,19.0508,0.13231],[5.375,-1.02193,19.2404,0.13311],[5.4583,-1.02824,19.4306,0.1339],[5.5417,-1.03504,19.6214,0.13468],[5.625,-1.04237,19.8127,0.13544],[5.7083,-1.05025,20.0046,0.1362],[5.7917,-1.05871,20.197,0.13695],[5.875,-1.06773,20.39,0.13769],[5.9583,-1.07732,20.5836,0.13842],[6.0417,-1.08747,20.7777,0.13914],[6.125,-1.09815,20.9724,0.13986],[6.2083,-1.10933,21.1678,0.14056],[6.2917,-1.12097,21.3638,0.14126],[6.375,-1.13302,21.5606,0.14195],[6.4583,-1.14543,21.7581,0.14263],[6.5417,-1.15813,21.9564,0.14331],[6.625,-1.17106,22.1557,0.14398],[6.7083,-1.18414,22.3558,0.14466],[6.7917,-1.19731,22.557,0.14533],[6.875,-1.21048,22.7593,0.146],[6.9583,-1.22357,22.9627,0.14667],[7.0417,-1.2365,23.1674,0.14734],[7.125,-1.24919,23.3734,0.14801],[7.2083,-1.26156,23.5809,0.14869],[7.2917,-1.27352,23.7898,0.14937],[7.375,-1.28501,24.0003,0.15007],[7.4583,-1.29595,24.2125,0.15076],[7.5417,-1.30627,24.4265,0.15147],[7.625,-1.3159,24.6423,0.15219],[7.7083,-1.32478,24.8601,0.15292],[7.7917,-1.33286,25.0799,0.15366],[7.875,-1.34008,25.3019,0.15442],[7.9583,-1.34641,25.5261,0.15519],[8.0417,-1.35181,25.7526,0.15597],[8.125,-1.35625,25.9815,0.15677],[8.2083,-1.35971,26.2128,0.15759],[8.2917,-1.36217,26.4468,0.15842],[8.375,-1.36361,26.6834,0.15928],[8.4583,-1.36404,26.9227,0.16014],[8.5417,-1.36346,27.1649,0.16103],[8.625,-1.36187,27.4099,0.16193],[8.7083,-1.35928,27.658,0.16284],[8.7917,-1.35572,27.909,0.16377],[8.875,-1.3512,28.1632,0.16472],[8.9583,-1.34575,28.4206,0.16568],[9.0417,-1.33941,28.6813,0.16666],[9.125,-1.33219,28.9453,0.16765],[9.2083,-1.32414,29.2127,0.16865],[9.2917,-1.31529,29.4836,0.16966],[9.375,-1.30569,29.758,0.17067],[9.4583,-1.29537,30.036,0.1717],[9.5417,-1.28437,30.3177,0.17273],[9.625,-1.27275,30.6031,0.17376],[9.7083,-1.26054,30.8923,0.1748],[9.7917,-1.24778,31.1853,0.17584],[9.875,-1.23453,31.4823,0.17687],[9.9583,-1.22082,31.7831,0.1779],[10.0417,-1.20669,32.088,0.17893],[10.125,-1.19219,32.3969,0.17995],[10.2083,-1.17736,32.7099,0.18096],[10.2917,-1.16224,33.027,0.18195],[10.375,-1.14688,33.3484,0.18293],[10.4583,-1.1313,33.6739,0.1839],[10.5417,-1.11554,34.0036,0.18485],[10.625,-1.09965,34.3377,0.18577],[10.7083,-1.08365,34.676,0.18668],[10.7917,-1.06759,35.0186,0.18756],[10.875,-1.05148,35.3656,0.18841],[10.9583,-1.03537,35.7169,0.18924],[11.0417,-1.01928,36.0726,0.19003],[11.125,-1.00324,36.4327,0.19079],[11.2083,-0.98727,36.797,0.19152],[11.2917,-0.97141,37.1658,0.19221],[11.375,-0.95567,37.5388,0.19286],[11.4583,-0.94008,37.9162,0.19348],[11.5417,-0.92467,38.2978,0.19405],[11.625,-0.90945,38.6836,0.19459],[11.7083,-0.89445,39.0736,0.19508],[11.7917,-0.87968,39.4678,0.19552],[11.875,-0.86516,39.866,0.19593],[11.9583,-0.85092,40.2683,0.19628],[12.0417,-0.83696,40.6744,0.19659],[12.125,-0.82332,41.0844,0.19686],[12.2083,-0.80999,41.4982,0.19707],[12.2917,-0.79701,41.9155,0.19724],[12.375,-0.78439,42.3364,0.19736],[12.4583,-0.77214,42.7607,0.19744],[12.5417,-0.76027,43.1883,0.19746],[12.625,-0.74882,43.619,0.19744],[12.7083,-0.73778,44.0526,0.19738],[12.7917,-0.72718,44.489,0.19727],[12.875,-0.71704,44.9281,0.19711],[12.9583,-0.70736,45.3696,0.19691],[13.0417,-0.69817,45.8134,0.19666],[13.125,-0.68948,46.2592,0.19637],[13.2083,-0.6813,46.7068,0.19605],[13.2917,-0.67367,47.1561,0.19568],[13.375,-0.66659,47.6067,0.19527],[13.4583,-0.66007,48.0585,0.19482],[13.5417,-0.65414,48.5111,0.19434],[13.625,-0.64882,48.9644,0.19383],[13.7083,-0.64412,49.4181,0.19328],[13.7917,-0.64006,49.8719,0.19271],[13.875,-0.63665,50.3255,0.1921],[13.9583,-0.63392,50.7786,0.19147],[14.0417,-0.63188,51.231,0.19081],[14.125,-0.63054,51.6823,0.19013],[14.2083,-0.62992,52.1323,0.18942],[14.2917,-0.63004,52.5806,0.1887],[14.375,-0.63091,53.027,0.18796],[14.4583,-0.63253,53.4711,0.18721],[14.5417,-0.63492,53.9126,0.18644],[14.625,-0.63808,54.3513,0.18566],[14.7083,-0.64203,54.7868,0.18487],[14.7917,-0.64676,55.2188,0.18408],[14.875,-0.65226,55.647,0.18328],[14.9583,-0.65855,56.0712,0.18247],[15.0417,-0.66561,56.491,0.18167],[15.125,-0.67343,56.9061,0.18086],[15.2083,-0.68199,57.3163,0.18005],[15.2917,-0.69127,57.7214,0.17925],[15.375,-0.70126,58.121,0.17846],[15.4583,-0.71192,58.5149,0.17767],[15.5417,-0.72322,58.9029,0.17689],[15.625,-0.73512,59.2848,0.17612],[15.7083,-0.74758,59.6603,0.17536],[15.7917,-0.76055,60.0293,0.17461],[15.875,-0.77398,60.3916,0.17388],[15.9583,-0.78782,60.747,0.17316],[16.0417,-0.80199,61.0954,0.17246],[16.125,-0.81645,61.4366,0.17178],[16.2083,-0.83111,61.7706,0.17111],[16.2917,-0.84591,62.0972,0.17047],[16.375,-0.86079,62.4164,0.16984],[16.4583,-0.87565,62.7281,0.16924],[16.5417,-0.89044,63.0323,0.16865],[16.625,-0.90506,63.3289,0.1681],[16.7083,-0.91946,63.618,0.16756],[16.7917,-0.93354,63.8996,0.16704],[16.875,-0.94725,64.1737,0.16655],[16.9583,-0.96051,64.4403,0.16608],[17.0417,-0.97324,64.6996,0.16564],[17.125,-0.9854,64.9516,0.16522],[17.2083,-0.9969,65.1965,0.16482],[17.2917,-1.00771,65.4344,0.16444],[17.375,-1.01776,65.6654,0.16409],[17.4583,-1.027,65.8897,0.16375],[17.5417,-1.0354,66.1075,0.16344],[17.625,-1.04292,66.319,0.16314],[17.7083,-1.04951,66.5244,0.16287],[17.7917,-1.05516,66.7239,0.16261],[17.875,-1.05984,66.9178,0.16237],[17.9583,-1.06353,67.1064,0.16214],[18.0417,-1.06622,67.2899,0.16192],[18.125,-1.06791,67.4686,0.16172],[18.2083,-1.06859,67.6428,0.16153],[18.2917,-1.06826,67.8128,0.16135],[18.375,-1.06693,67.9788,0.16118],[18.4583,-1.06462,68.1411,0.16102],[18.5417,-1.06134,68.3,0.16087],[18.625,-1.05712,68.4558,0.16073],[18.7083,-1.05199,68.6087,0.16059],[18.7917,-1.04599,68.7589,0.16046],[18.875,-1.03917,68.9065,0.16034],[18.9583,-1.03158,69.0518,0.16023],[19.0417,-1.02329,69.1947,0.16014],[19.125,-1.01439,69.3353,0.16006],[19.2083,-1.00495,69.4735,0.15999],[19.2917,-0.9951,69.6093,0.15995],[19.375,-0.98496,69.7423,0.15993],[19.4583,-0.97466,69.8722,0.15995],[19.5417,-0.96438,69.9987,0.16001],[19.625,-0.95427,70.121,0.16011],[19.7083,-0.94455,70.2386,0.16027],[19.7917,-0.93541,70.3504,0.16051],[19.875,-0.92706,70.4555,0.16082],[19.9583,-0.91972,70.5525,0.16123],[20,-0.91649,70.5976,0.16148]],"f":[[0.0,0.3809,3.2322,0.14171],[0.0833,0.1727,4.1716,0.13738],[0.1667,0.0959,5.1315,0.12998],[0.25,0.0407,5.8393,0.12622],[0.3333,-0.0053,6.428,0.12401],[0.4167,-0.0428,6.8959,0.12274],[0.5,-0.0759,7.3016,0.12204],[0.5833,-0.1039,7.6416,0.12178],[0.6667,-0.1284,7.9439,0.1218],[0.75,-0.1507,8.2259,0.12199],[0.8333,-0.1698,8.4769,0.12222],[0.9167,-0.1873,8.7207,0.12247],[1.0,-0.2022,8.9462,0.12267],[1.0833,-0.216,9.1722,0.12283],[1.1667,-0.2277,9.3861,0.12294],[1.25,-0.2385,9.6038,0.12299],[1.3333,-0.2478,9.8124,0.12303],[1.4167,-0.2561,10.0196,0.12305],[1.5,-0.2637,10.2324,0.12309],[1.5833,-0.2702,10.4372,0.12315],[1.6667,-0.2763,10.6481,0.12324],[1.75,-0.2814,10.8521,0.12335],[1.8333,-0.2862,11.0633,0.12351],[1.9167,-0.2903,11.2684,0.12369],[2,-0.73534,12.055,0.1074],[2.0417,-0.75221,12.1346,0.10774],[2.125,-0.78423,12.291,0.10848],[2.2083,-0.8141,12.4447,0.10928],[2.2917,-0.84194,12.5962,0.11014],[2.375,-0.86789,12.7462,0.11106],[2.4583,-0.8921,12.8952,0.11202],[2.5417,-0.91472,13.0436,0.11302],[2.625,-0.93588,13.1918,0.11406],[2.7083,-0.95572,13.3402,0.11511],[2.7917,-0.97438,13.4891,0.11619],[2.875,-0.99198,13.6388,0.11729],[2.9583,-1.00864,13.7894,0.11839],[3.0417,-1.02447,13.9411,0.11949],[3.125,-1.03957,14.0941,0.1206],[3.2083,-1.05404,14.2484,0.12169],[3.2917,-1.06795,14.4043,0.12279],[3.375,-1.08137,14.5617,0.12386],[3.4583,-1.09438,14.7206,0.12493],[3.5417,-1.10702,14.8812,0.12597],[3.625,-1.11934,15.0434,0.127],[3.7083,-1.13137,15.2072,0.12801],[3.7917,-1.14314,15.3726,0.12899],[3.875,-1.15466,15.5396,0.12995],[3.9583,-1.16596,15.7082,0.13089],[4.0417,-1.17703,15.8782,0.1318],[4.125,-1.18787,16.0498,0.13269],[4.2083,-1.19848,16.2228,0.13356],[4.2917,-1.20885,16.3972,0.1344],[4.375,-1.21897,16.5729,0.13523],[4.4583,-1.2288,16.7499,0.13603],[4.5417,-1.23833,16.9283,0.13681],[4.625,-1.24754,17.1078,0.13758],[4.7083,-1.25639,17.2886,0.13832],[4.7917,-1.26486,17.4705,0.13906],[4.875,-1.27293,17.6536,0.13978],[4.9583,-1.28055,17.8378,0.14049],[5.0417,-1.28769,18.0231,0.14119],[5.125,-1.29433,18.2096,0.14188],[5.2083,-1.30044,18.3971,0.14257],[5.2917,-1.30599,18.5857,0.14326],[5.375,-1.31095,18.7754,0.14394],[5.4583,-1.31529,18.9663,0.14463],[5.5417,-1.31899,19.1583,0.14532],[5.625,-1.32204,19.3515,0.14601],[5.7083,-1.3244,19.5459,0.14671],[5.7917,-1.32606,19.7415,0.14741],[5.875,-1.32702,19.9384,0.14813],[5.9583,-1.32726,20.1367,0.14885],[6.0417,-1.32676,20.3364,0.14959],[6.125,-1.32554,20.5375,0.15034],[6.2083,-1.32358,20.7401,0.15111],[6.2917,-1.32089,20.9444,0.15189],[6.375,-1.31747,21.1503,0.15268],[6.4583,-1.31333,21.358,0.1535],[6.5417,-1.30849,21.5675,0.15433],[6.625,-1.30295,21.7789,0.15517],[6.7083,-1.29673,21.9923,0.15604],[6.7917,-1.28986,22.2079,0.15693],[6.875,-1.28236,22.4256,0.15783],[6.9583,-1.27424,22.6456,0.15875],[7.0417,-1.26555,22.868,0.15969],[7.125,-1.2563,23.0929,0.16065],[7.2083,-1.24653,23.3204,0.16163],[7.2917,-1.23627,23.5505,0.16262],[7.375,-1.22555,23.7834,0.16363],[7.4583,-1.21441,24.0192,0.16465],[7.5417,-1.20288,24.2579,0.16569],[7.625,-1.19101,24.4996,0.16674],[7.7083,-1.17882,24.7445,0.1678],[7.7917,-1.16635,24.9926,0.16888],[7.875,-1.15365,25.244,0.16996],[7.9583,-1.14075,25.4988,0.17105],[8.0417,-1.12768,25.757,0.17215],[8.125,-1.11449,26.0187,0.17325],[8.2083,-1.1012,26.284,0.17435],[8.2917,-1.08786,26.553,0.17546],[8.375,-1.0745,26.8256,0.17657],[8.4583,-1.06115,27.1019,0.17767],[8.5417,-1.04785,27.382,0.17877],[8.625,-1.03462,27.6659,0.17987],[8.7083,-1.0215,27.9537,0.18096],[8.7917,-1.00852,28.2452,0.18204],[8.875,-0.99571,28.5406,0.18311],[8.9583,-0.98309,28.8398,0.18416],[9.0417,-0.97069,29.1429,0.1852],[9.125,-0.95853,29.4498,0.18623],[9.2083,-0.94664,29.7605,0.18723],[9.2917,-0.93504,30.0749,0.18822],[9.375,-0.92376,30.3931,0.18918],[9.4583,-0.9128,30.7149,0.19012],[9.5417,-0.9022,31.0403,0.19104],[9.625,-0.89196,31.3693,0.19193],[9.7083,-0.88211,31.7017,0.1928],[9.7917,-0.87266,32.0374,0.19363],[9.875,-0.86363,32.3765,0.19443],[9.9583,-0.85503,32.7187,0.19521],[10.0417,-0.84687,33.0639,0.19595],[10.125,-0.83917,33.4121,0.19665],[10.2083,-0.83193,33.763,0.19733],[10.2917,-0.82518,34.1166,0.19796],[10.375,-0.81891,34.4727,0.19856],[10.4583,-0.81314,34.8312,0.19912],[10.5417,-0.80787,35.1918,0.19965],[10.625,-0.80312,35.5544,0.20013],[10.7083,-0.7989,35.9188,0.20058],[10.7917,-0.7952,36.2849,0.20099],[10.875,-0.79205,36.6524,0.20136],[10.9583,-0.78944,37.0211,0.20168],[11.0417,-0.78737,37.3909,0.20197],[11.125,-0.78587,37.7615,0.20222],[11.2083,-0.78493,38.1327,0.20243],[11.2917,-0.78456,38.5043,0.20259],[11.375,-0.78476,38.8761,0.20272],[11.4583,-0.78554,39.2477,0.2028],[11.5417,-0.7869,39.6191,0.20285],[11.625,-0.78886,39.99,0.20285],[11.7083,-0.7914,40.3601,0.20282],[11.7917,-0.79455,40.7292,0.20275],[11.875,-0.79829,41.097,0.20264],[11.9583,-0.80264,41.4634,0.20249],[12.0417,-0.8076,41.828,0.2023],[12.125,-0.81317,42.1906,0.20207],[12.2083,-0.81936,42.5511,0.20181],[12.2917,-0.82616,42.9091,0.20152],[12.375,-0.83359,43.2644,0.20119],[12.4583,-0.84163,43.6168,0.20082],[12.5417,-0.85031,43.9661,0.20042],[12.625,-0.85961,44.312,0.19999],[12.7083,-0.86953,44.6544,0.19952],[12.7917,-0.88009,44.9929,0.19903],[12.875,-0.89127,45.3274,0.1985],[12.9583,-0.90308,45.6578,0.19795],[13.0417,-0.91551,45.9837,0.19736],[13.125,-0.92857,46.305,0.19675],[13.2083,-0.94225,46.6216,0.19612],[13.2917,-0.95654,46.9331,0.19545],[13.375,-0.97144,47.2396,0.19477],[13.4583,-0.98695,47.5408,0.19406],[13.5417,-1.00305,47.8366,0.19333],[13.625,-1.01974,48.1269,0.19258],[13.7083,-1.03701,48.4114,0.19181],[13.7917,-1.05485,48.6902,0.19102],[13.875,-1.07323,48.963,0.19022],[13.9583,-1.09216,49.2299,0.18939],[14.0417,-1.11161,49.4908,0.18856],[14.125,-1.13155,49.7454,0.18771],[14.2083,-1.15198,49.9939,0.18685],[14.2917,-1.17287,50.2362,0.18598],[14.375,-1.19418,50.4722,0.1851],[14.4583,-1.21591,50.702,0.18422],[14.5417,-1.23801,50.9254,0.18333],[14.625,-1.26045,51.1426,0.18243],[14.7083,-1.28319,51.3535,0.18153],[14.7917,-1.30621,51.5582,0.18063],[14.875,-1.32946,51.7568,0.17974],[14.9583,-1.3529,51.9493,0.17884],[15.0417,-1.37648,52.1357,0.17795],[15.125,-1.40015,52.3162,0.17706],[15.2083,-1.42388,52.4908,0.17618],[15.2917,-1.44759,52.6597,0.17531],[15.375,-1.47125,52.823,0.17445],[15.4583,-1.49479,52.9808,0.1736],[15.5417,-1.51816,53.1333,0.17276],[15.625,-1.54129,53.2806,0.17194],[15.7083,-1.56412,53.4228,0.17114],[15.7917,-1.5866,53.5603,0.17035],[15.875,-1.60866,53.6931,0.16959],[15.9583,-1.63023,53.8214,0.16884],[16.0417,-1.65125,53.9454,0.16812],[16.125,-1.67165,54.0654,0.16743],[16.2083,-1.69138,54.1816,0.16676],[16.2917,-1.71036,54.2941,0.16612],[16.375,-1.72854,54.4032,0.1655],[16.4583,-1.74586,54.5092,0.16492],[16.5417,-1.76224,54.6122,0.16437],[16.625,-1.77764,54.7126,0.16385],[16.7083,-1.79201,54.8104,0.16336],[16.7917,-1.80528,54.9061,0.16291],[16.875,-1.81742,54.9998,0.16249],[16.9583,-1.82837,55.0917,0.1621],[17.0417,-1.83809,55.1822,0.16175],[17.125,-1.84655,55.2714,0.16144],[17.2083,-1.85372,55.3595,0.16116],[17.2917,-1.85957,55.4469,0.16092],[17.375,-1.86407,55.5336,0.16072],[17.4583,-1.86721,55.62,0.16055],[17.5417,-1.86898,55.7062,0.16042],[17.625,-1.86937,55.7925,0.16033],[17.7083,-1.86839,55.8789,0.16027],[17.7917,-1.86603,55.9657,0.16024],[17.875,-1.86233,56.053,0.16025],[17.9583,-1.85729,56.141,0.1603],[18.0417,-1.85095,56.2297,0.16037],[18.125,-1.84333,56.3192,0.16047],[18.2083,-1.8345,56.4096,0.16061],[18.2917,-1.82448,56.501,0.16077],[18.375,-1.81334,56.5932,0.16096],[18.4583,-1.80115,56.6863,0.16117],[18.5417,-1.78798,56.7803,0.1614],[18.625,-1.7739,56.8749,0.16165],[18.7083,-1.75901,56.9701,0.16192],[18.7917,-1.74339,57.0656,0.16221],[18.875,-1.72716,57.1613,0.16251],[18.9583,-1.71041,57.2568,0.16282],[19.0417,-1.69327,57.3518,0.16314],[19.125,-1.67585,57.4458,0.16346],[19.2083,-1.6583,57.5384,0.16379],[19.2917,-1.64075,57.6291,0.16412],[19.375,-1.62333,57.7173,0.16445],[19.4583,-1.60621,57.8023,0.16477],[19.5417,-1.58953,57.8833,0.16509],[19.625,-1.57347,57.9597,0.1654],[19.7083,-1.55818,58.0304,0.1657],[19.7917,-1.54385,58.0945,0.16599],[19.875,-1.53064,58.151,0.16626],[19.9583,-1.51875,58.1988,0.16652],[20,-1.51336,58.219,0.16664]]}};
+</script>
+<script>
+(() => {
+  // ---------- constants ----------
+  const COLORS = ["blue", "red", "green", "violet", "orange"];
+  const CATS = ["Firsts", "Health", "School", "Sport", "Fun", "Other"];
+  const SIZE_CATS = ["Tops", "Bottoms", "Shoes", "Hat", "Other"];
+  const VISIT_TYPES = ["GP visit", "Specialist", "Dentist", "Hospital", "Illness", "Other"];
+  const TOOTH_TYPES = ["Central incisor", "Lateral incisor", "Canine", "First molar", "Second molar"];
+  const QUADS = [["UL", "Top left"], ["UR", "Top right"], ["LL", "Bottom left"], ["LR", "Bottom right"]];
+  const TAB_ICONS = {"overview": "<path d=\"M5 21V3h14v18\"/><path d=\"M8.5 21V6.5h7V21\"/><path d=\"M2.5 21h19\"/><path d=\"M12.5 9.5h1.5M13 12.5h1M12.5 15.5h1.5\"/>", "measures": "<path d=\"M3 20.5h18\"/><path d=\"M4 16l5-5 4 3 6.5-7\"/><path d=\"M15.5 7h4v4\"/>", "milestones": "<path d=\"M5.5 21.5V3.5\"/><path d=\"M5.5 4h12l-2.5 4.25L17.5 12.5h-12\"/>", "sizes": "<path d=\"M8.5 3.5 3 6.5l2 4 3-1.5v12h8v-12l3 1.5 2-4-5.5-3c-.6 1.6-2 2.6-3.5 2.6S9.1 5.1 8.5 3.5Z\"/>", "health": "<path d=\"M12 20.5s-7.5-4.6-7.5-10.4A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.5 2.5c0 5.8-7.5 10.4-7.5 10.4Z\"/><path d=\"M8 12.5h2.2l1.2-2 1.6 4 1.1-2H16\"/>"};
+  const LS_KEY = "doorframe-growth-v1", SET_KEY = "doorframe-settings-v1";
+
+  // ---------- helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+  const iso = (dt) => { const d = new Date(dt); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+  const cvar = (c) => `var(--k-${COLORS.includes(c) ? c : "blue"})`;
+  const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const yrs = (dob, d) => (parse(d) - parse(dob)) / (365.25 * 864e5);
+  const fmtDate = (s) => parse(s).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  const fmtShort = (s) => parse(s).toLocaleDateString("en-AU", { month: "short", year: "2-digit" });
+  const num = (v) => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isNaN(n) ? null : n; };
+  const kg = (w) => (Math.round(w * 100) % 10 ? w.toFixed(2) : w.toFixed(1));
+  const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+  function ageLabel(dob, d) {
+    if (!dob) return "";
+    const a = parse(dob), b = parse(d);
+    let m = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+    if (b.getDate() < a.getDate()) m--;
+    if (m < 0) return "before birth";
+    if (m < 24) return `${m} mo`;
+    return `${Math.floor(m / 12)}y ${m % 12}m`;
+  }
+  function monthsBetween(d1, d2) {
+    const a = parse(d1), b = parse(d2);
+    return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()) - (b.getDate() < a.getDate() ? 1 : 0);
+  }
+  const addMonths = (s, m) => { const d = parse(s); d.setMonth(d.getMonth() + m); return iso(d); };
+  const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
+  const ago = (d) => { const m = monthsBetween(d, today()); return m < 1 ? "less than a month ago" : m === 1 ? "1 month ago" : m < 24 ? `${m} months ago` : `${Math.floor(m / 12)} years ago`; };
+
+  // ---------- growth reference (WHO 0–2, CDC 2–20) ----------
+  function lmsAt(key, sex, age) {
+    const t = GROWTH_REF[key]?.[sex]; if (!t || age < 0 || age > t[t.length - 1][0]) return null;
+    let i = 0; while (i < t.length - 2 && t[i + 1][0] < age) i++;
+    const a = t[i], b = t[i + 1], f = Math.max(0, Math.min(1, (age - a[0]) / (b[0] - a[0] || 1)));
+    return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f, a[3] + (b[3] - a[3]) * f];
+  }
+  const zOf = (x, [L, M, S]) => (Math.abs(L) < 1e-6 ? Math.log(x / M) / S : (Math.pow(x / M, L) - 1) / (L * S));
+  const valAt = (z, [L, M, S]) => (Math.abs(L) < 1e-6 ? M * Math.exp(S * z) : M * Math.pow(1 + L * S * z, 1 / L));
+  function phi(z) { // standard normal CDF
+    const t = 1 / (1 + 0.2316419 * Math.abs(z)), d = 0.3989423 * Math.exp(-z * z / 2);
+    const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+    return z > 0 ? 1 - p : p;
+  }
+  const Z = { 3: -1.8808, 10: -1.2816, 25: -0.6745, 50: 0, 75: 0.6745, 90: 1.2816, 97: 1.8808 };
+  function percentile(k, key, value, date) {
+    if (!k.sex || !k.dob || typeof value !== "number") return null;
+    const lms = lmsAt(key, k.sex, yrs(k.dob, date)); if (!lms) return null;
+    const p = phi(zOf(value, lms)) * 100;
+    return p < 1 ? "below 1st" : p > 99 ? "above 99th" : ordinal(Math.round(p));
+  }
+
+  // ---------- state ----------
+  let kids = {};
+  let settings = { remind: 3 };
+  let selected = null, tab = "overview", chartMode = "self", metric = "h";
+  let sheet = null;            // {mode:'add'|'edit'|'batch', id}
+  let pendingDelete = null;
+  let editM = null, editMs = null, editSz = null, editV = null, editTooth = null;
+
+  // Keep whatever is typed across re-renders
+  const drafts = {};
+  const SHEET_IDS = ["kName", "kDob", "kSex", "bTime", "bW", "bH", "bHead", "bPlace", "bNotes", "bt*"];
+  const M_IDS = ["mDate", "mH", "mW"], MS_IDS = ["msDate", "msCat", "msTitle", "msNote"], SZ_IDS = ["szDate", "szCat", "szSize", "szNote"],
+    V_IDS = ["vDate", "vType", "vTitle", "vNote"], T_IDS = ["tIn", "tOut"], H_IDS = ["hNotes"];
+  const ALL_IDS = [...M_IDS, ...MS_IDS, ...SZ_IDS, ...V_IDS, ...T_IDS, ...H_IDS, ...SHEET_IDS];
+  function captureDrafts() {
+    document.querySelectorAll("#child input[id], #child select[id], #child textarea[id], #sheetHost input[id], #sheetHost select[id], #sheetHost textarea[id]")
+      .forEach((el) => { if (el.type === "file") return; drafts[el.id] = el.type === "checkbox" ? (el.checked ? "1" : "") : el.value; });
+    const a = document.activeElement;
+    if (!a || !a.id || !a.matches("input, select, textarea") || a.type === "file") return null;
+    let s = null, e = null; try { s = a.selectionStart; e = a.selectionEnd; } catch {}
+    return { id: a.id, s, e };
+  }
+  function restoreDrafts(focus) {
+    Object.entries(drafts).forEach(([id, v]) => {
+      const el = $(id); if (!el || el.type === "file") return;
+      if (el.type === "checkbox") el.checked = v === "1"; else if (el.value !== v) el.value = v;
+    });
+    if (focus) { const el = $(focus.id); if (el && document.activeElement !== el) { el.focus({ preventScroll: true }); try { if (focus.s != null) el.setSelectionRange(focus.s, focus.e); } catch {} } }
+  }
+  function clearDrafts(list) {
+    list.forEach((id) => {
+      if (id.endsWith("*")) { const p = id.slice(0, -1); Object.keys(drafts).forEach((k) => { if (k.startsWith(p)) delete drafts[k]; }); }
+      else delete drafts[id];
+    });
+  }
+  function paint(fn, fresh = []) {
+    const f = captureDrafts(); clearDrafts(fresh); fn();
+    const keep = f && !fresh.some((id) => (id.endsWith("*") ? f.id.startsWith(id.slice(0, -1)) : id === f.id));
+    restoreDrafts(keep ? f : null);
+  }
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2600); }
+
+  // ---------- storage ----------
+  function loadLocal() { try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { return {}; } }
+  let askedPersist = false;
+  function saveLocal() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(kids)); }
+    catch { toast("Couldn't save on this device. Storage may be full or blocked."); return; }
+    if (!askedPersist && navigator.storage?.persist) { askedPersist = true; navigator.storage.persist().catch(() => {}); }
+  }
+  function loadSettings() { try { Object.assign(settings, JSON.parse(localStorage.getItem(SET_KEY) || "{}")); } catch {} }
+  function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch {} }
+  const persist = () => saveLocal();
+  function update(id, fn, fresh) { const k = structuredClone(kids[id]); fn(k); kids[id] = k; render(fresh); persist(); }
+
+  // ---------- derived ----------
+  const sorted = () => Object.entries(kids).sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0) || (a[1].dob || "").localeCompare(b[1].dob || ""));
+  const measures = (k, key) => (k.measures || []).filter((m) => typeof m[key] === "number").sort((a, b) => a.d.localeCompare(b.d));
+  function series(k, key) { // [{x: age, y, d}] including birth
+    if (!k.dob) return [];
+    const pts = measures(k, key).map((m) => ({ x: yrs(k.dob, m.d), y: m[key], d: m.d })).filter((p) => p.x >= 0);
+    const bv = k.birth?.[key]; if (typeof bv === "number") pts.unshift({ x: 0, y: bv, d: k.dob });
+    return pts.sort((a, b) => a.x - b.x);
+  }
+  function valueAtAge(k, key, age) {
+    const pts = series(k, key); if (!pts.length) return null;
+    const near = pts.reduce((a, b) => (Math.abs(b.x - age) < Math.abs(a.x - age) ? b : a));
+    if (Math.abs(near.x - age) <= 0.08) return { v: near.y, approx: false };
+    const before = [...pts].reverse().find((p) => p.x <= age), after = pts.find((p) => p.x >= age);
+    if (before && after && after.x - before.x <= 2.5) return { v: before.y + (after.y - before.y) * (age - before.x) / (after.x - before.x), approx: true };
+    if (Math.abs(near.x - age) <= 0.25) return { v: near.y, approx: true };
+    return null;
+  }
+  function velocity(k) {
+    const hs = measures(k, "h"); if (hs.length < 2) return null;
+    const last = hs[hs.length - 1], cut = parse(last.d); cut.setFullYear(cut.getFullYear() - 1);
+    const ref = hs.filter((m) => parse(m.d) <= cut).pop() || hs[0];
+    const span = (parse(last.d) - parse(ref.d)) / (365.25 * 864e5);
+    return span < 0.25 ? null : (last.h - ref.h) / span;
+  }
+  const lastMeasured = (k) => (k.measures || []).map((m) => m.d).sort().pop() || null;
+  function dueInfo(k) {
+    if (!settings.remind) return null;
+    const l = lastMeasured(k); if (!l) return { never: true };
+    const m = monthsBetween(l, today());
+    return m >= settings.remind ? { months: m, last: l } : null;
+  }
+  const latestBy = (list, key, before) => {
+    const out = {};
+    [...(list || [])].filter((x) => !before || x.d <= before).sort((a, b) => a.d.localeCompare(b.d)).forEach((x) => { out[x[key]] = x; });
+    return out;
+  };
+
+  // ---------- chips ----------
+  function renderChips() {
+    const list = sorted();
+    $("kids").innerHTML = list.map(([id, k]) => `<button class="chip" type="button" data-kid="${id}" aria-pressed="${id === selected}" style="--c:${cvar(k.color)}"><span class="dot"></span>${esc(k.name)}${dueInfo(k) ? `<span class="due" title="Due for a measure"></span>` : ""}</button>`).join("")
+      + `<button class="chip add" type="button" id="addKid">+ Add child</button>`
+      + (list.length > 1 ? `<button class="chip batch" type="button" id="openBatch">Measure everyone</button>` : "");
+  }
+
+  // ---------- chart ----------
+  function niceStep(range) { const raw = range / 5, p = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / p; return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * p; }
+  function renderChart(k) {
+    const list = (chartMode === "all" ? sorted().map(([, x]) => x) : [k]).map((x) => ({ k: x, pts: series(x, metric) })).filter((s) => s.pts.length);
+    if (!list.length) return `<p class="empty">Add at least one ${metric === "h" ? "height" : "weight"} to see the chart.</p>`;
+    const all = list.flatMap((s) => s.pts);
+    let x0 = Math.min(...all.map((p) => p.x)), x1 = Math.max(...all.map((p) => p.x));
+    if (x1 - x0 < 1) { x0 = Math.max(0, x0 - 0.5); x1 = x0 + 1; }
+    x0 = Math.floor(x0); x1 = Math.ceil(x1);
+    // Percentile bands (single child with boy/girl set)
+    let bands = null;
+    if (chartMode === "self" && k.sex) {
+      const steps = 48, rows = [];
+      for (let i = 0; i <= steps; i++) {
+        const a = x0 + (x1 - x0) * i / steps, lms = lmsAt(metric, k.sex, Math.min(a, 20));
+        if (lms) rows.push({ a, v: Object.fromEntries(Object.entries(Z).map(([p, z]) => [p, valAt(z, lms)])) });
+      }
+      if (rows.length > 2) bands = rows;
+    }
+    let ys = all.map((p) => p.y);
+    if (bands) bands.forEach((r) => ys.push(r.v[3], r.v[97]));
+    let y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const step = niceStep(Math.max(y1 - y0, metric === "h" ? 10 : 4));
+    y0 = Math.floor((y0 - step * 0.2) / step) * step; y1 = Math.ceil((y1 + step * 0.2) / step) * step;
+    if (y0 < 0) y0 = 0;
+    const W = 640, H = 320, L = 46, R = bands ? 46 : 24, T = 28, B = 34;
+    const sx = (v) => L + (v - x0) / (x1 - x0) * (W - L - R), sy = (v) => T + (y1 - v) / (y1 - y0) * (H - T - B);
+    const unit = metric === "h" ? "cm" : "kg", mono = 'font-family="IBM Plex Mono, monospace"';
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${metric === "h" ? "Height" : "Weight"} by age">`;
+    for (let v = y0; v <= y1 + 1e-9; v += step) {
+      s += `<line x1="${L}" x2="${W - R}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)" stroke-width="1"/>`;
+      s += `<text x="${L - 8}" y="${sy(v) + 4}" text-anchor="end" ${mono} font-size="11" fill="var(--muted)">${+v.toFixed(1)}</text>`;
+    }
+    const xstep = x1 - x0 > 8 ? 2 : 1;
+    for (let v = x0; v <= x1; v += xstep) s += `<text x="${sx(v)}" y="${H - 12}" text-anchor="middle" ${mono} font-size="11" fill="var(--muted)">${v}y</text>`;
+    s += `<text x="${L - 8}" y="${T - 14}" text-anchor="end" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="var(--muted)">${unit}</text>`;
+    if (bands) {
+      const area = (lo, hi) => "M" + bands.map((r) => `${sx(r.a).toFixed(1)} ${sy(r.v[hi]).toFixed(1)}`).join(" L") + " L" + [...bands].reverse().map((r) => `${sx(r.a).toFixed(1)} ${sy(r.v[lo]).toFixed(1)}`).join(" L") + " Z";
+      const line = (p) => "M" + bands.map((r) => `${sx(r.a).toFixed(1)} ${sy(r.v[p]).toFixed(1)}`).join(" L");
+      s += `<path d="${area(3, 97)}" fill="var(--k-blue)" fill-opacity=".07"/><path d="${area(25, 75)}" fill="var(--k-blue)" fill-opacity=".1"/>`;
+      s += `<path d="${line(50)}" fill="none" stroke="var(--k-blue)" stroke-opacity=".45" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+      const last = bands[bands.length - 1];
+      let prevY = -1e9;
+      [[97, "97th"], [50, "50th"], [3, "3rd"]].forEach(([p, lab]) => {
+        const y = Math.max(sy(last.v[p]) + 4, prevY + 13); prevY = y;
+        s += `<text x="${W - R + 5}" y="${y}" ${mono} font-size="10" fill="var(--muted)">${lab}</text>`;
+      });
+    }
+    list.forEach(({ k: x, pts }) => {
+      const c = cvar(x.color), path = pts.map((p, i) => `${i ? "L" : "M"}${sx(p.x).toFixed(1)} ${sy(p.y).toFixed(1)}`).join(" ");
+      if (chartMode === "self" && !bands && pts.length > 1) s += `<path d="${path} L${sx(pts[pts.length - 1].x)} ${sy(y0)} L${sx(pts[0].x)} ${sy(y0)} Z" fill="${c}" fill-opacity=".09"/>`;
+      s += `<path d="${path}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+      pts.forEach((p, i) => { const last = i === pts.length - 1; s += `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="${last ? 5 : 3}" fill="${last ? c : "var(--panel)"}" stroke="${c}" stroke-width="2"><title>${esc(x.name)}: ${p.y} ${unit} at ${ageLabel(x.dob, p.d)} (${fmtDate(p.d)})</title></circle>`; });
+      const lp = pts[pts.length - 1];
+      s += `<text x="${sx(lp.x)}" y="${sy(lp.y) - 11}" text-anchor="middle" ${mono} font-size="12" font-weight="500" fill="${c}">${lp.y}</text>`;
+    });
+    s += `</svg>`;
+    const legend = chartMode === "all" ? `<div class="legend">${list.map((s) => `<span style="--c:${cvar(s.k.color)}">${esc(s.k.name)}</span>`).join("")}</div>` : "";
+    const note = chartMode === "all" ? `<p class="hint">Lines are plotted by age, so you can see who was taller at the same age.</p>`
+      : bands ? `<p class="hint">Shaded bands show the 3rd to 97th and 25th to 75th percentiles. WHO charts to age 2, CDC charts after, as used in Australia. A guide only, not medical advice.</p>`
+      : k.sex ? "" : `<p class="hint">Set boy or girl in Edit to compare against standard growth charts.</p>`;
+    return s + legend + note;
+  }
+
+  // ---------- same-age comparison ----------
+  function renderCompare() {
+    const list = sorted().map(([, k]) => k).filter((k) => k.dob);
+    if (list.length < 2) return "";
+    const maxAge = Math.floor(Math.max(...list.map((k) => yrs(k.dob, today()))));
+    const rows = [];
+    for (let a = 0; a <= maxAge; a++) {
+      const vals = list.map((k) => valueAtAge(k, metric, a));
+      if (vals.filter(Boolean).length >= 2) rows.push({ a, vals });
+    }
+    const unit = metric === "h" ? "cm" : "kg";
+    const body = rows.length ? `<div class="tablewrap"><table class="cmp"><thead><tr><th>Age</th>${list.map((k) => `<th style="color:${cvar(k.color)}">${esc(k.name)}</th>`).join("")}</tr></thead><tbody>
+      ${rows.map((r) => `<tr><td>${r.a === 0 ? "Birth" : r.a === 1 ? "1 year" : r.a + " years"}</td>${r.vals.map((v) => `<td class="${v?.approx ? "ap" : ""}">${v ? (v.approx ? "≈" : "") + (metric === "h" ? v.v.toFixed(1) : kg(Math.round(v.v * 100) / 100)) : "–"}</td>`).join("")}</tr>`).join("")}
+      </tbody></table></div><p class="hint">${unit}. Values marked ≈ are estimated from the measurements either side of that birthday.</p>`
+      : `<p class="empty">Once two children have ${metric === "h" ? "heights" : "weights"} near the same birthday, they'll line up here.</p>`;
+    return `<section class="card"><div class="card-head"><h2>At the same age</h2><span class="hint">${metric === "h" ? "Height" : "Weight"}</span></div>${body}</section>`;
+  }
+
+  // ---------- child panel ----------
+  function statBlock(label, value, unit, detail, up, pct) {
+    return `<div class="stat"><div class="eyebrow">${label}</div><div class="v">${value}${unit ? ` <small>${unit}</small>` : ""}</div><div class="d${up ? " up" : ""}">${detail}</div>${pct ? `<div class="pct">${pct} percentile</div>` : ""}</div>`;
+  }
+  function renderTabbar() {
+    const k = kids[selected];
+    document.body.classList.toggle("no-kids", !k);
+    if (!k) { $("tabbar").innerHTML = ""; return; }
+    $("tabbar").parentElement.style.setProperty("--c", cvar(k.color));
+    const t = (key, label) => `<button type="button" role="tab" data-tab="${key}" aria-selected="${tab === key}"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true">${TAB_ICONS[key]}</svg><span>${label}</span></button>`;
+    $("tabbar").innerHTML = t("overview", "Overview") + t("measures", "Growth") + t("milestones", "Milestones") + t("sizes", "Sizes") + t("health", "Health");
+  }
+  function delBtn(kind, id) {
+    const armed = pendingDelete === `${kind}:${id}`;
+    return `<button class="${armed ? "btn small danger" : "linkish"}" type="button" data-del="${kind}:${id}">${armed ? "Delete?" : "Remove"}</button>`;
+  }
+  const rowBtns = (kind, id, editAttr) => `<div class="rowbtns"><button class="linkish" type="button" ${editAttr}="${id}">Edit</button>${delBtn(kind, id)}</div>`;
+  const whenLine = (k, d) => `${k.dob ? `<span class="age">${esc(ageLabel(k.dob, d))}</span> · ` : ""}${fmtDate(d)}`;
+
+  function overviewTab(k) {
+    const now = today(), hs = measures(k, "h"), ws = measures(k, "w");
+    const lh = hs[hs.length - 1], ph = hs[hs.length - 2], lw = ws[ws.length - 1], pw = ws[ws.length - 2], v = velocity(k);
+    const due = dueInfo(k);
+    const dueBanner = due ? `<div class="due-banner"><p><strong>Time to measure ${esc(k.name)}.</strong> ${due.never ? "No measurements yet." : `Last measured ${ago(due.last)}.`}</p><button class="btn small" type="button" data-tab="measures">Measure now</button></div>` : "";
+    const stats =
+      statBlock("Age", k.dob ? ageLabel(k.dob, now) : "–", "", k.dob ? `Born ${fmtDate(k.dob)}` : "Add a birthday") +
+      statBlock("Height", lh ? lh.h.toFixed(1) : "–", lh ? "cm" : "", lh ? (ph ? `+${(lh.h - ph.h).toFixed(1)} since ${fmtShort(ph.d)}` : fmtDate(lh.d)) : "Not measured yet", ph && lh.h > ph.h, lh && percentile(k, "h", lh.h, lh.d)) +
+      statBlock("Weight", lw ? kg(lw.w) : "–", lw ? "kg" : "", lw ? (pw ? `${lw.w - pw.w >= 0 ? "+" : ""}${kg(Math.round((lw.w - pw.w) * 100) / 100)} since ${fmtShort(pw.d)}` : fmtDate(lw.d)) : "Not weighed yet", false, lw && percentile(k, "w", lw.w, lw.d)) +
+      statBlock("Growing", v != null ? v.toFixed(1) : "–", v != null ? "cm/yr" : "", v != null ? "Height gain over the last year" : "Needs 2 heights 3+ months apart");
+    const b = k.birth || {};
+    const bRow = (label, val) => (val ? `<div><dt>${label}</dt><dd>${val}</dd></div>` : "");
+    const time12 = b.time ? new Date(`2000-01-01T${b.time}`).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) : "";
+    const birthItems = bRow("Date", k.dob ? `${fmtDate(k.dob)} (${parse(k.dob).toLocaleDateString("en-AU", { weekday: "long" })})` : "")
+      + bRow("Time", esc(time12)) + bRow("Where", esc(b.place))
+      + bRow("Weight", b.w != null ? `<span class="num">${Number(b.w).toFixed(2)} kg</span>` : "")
+      + bRow("Length", b.h != null ? `<span class="num">${b.h} cm</span>` : "")
+      + bRow("Head", b.head != null ? `<span class="num">${b.head} cm</span>` : "");
+    const birthCard = `<section class="card"><div class="card-head"><h2>Birth</h2><button class="linkish" type="button" id="editKid2">Edit</button></div>
+      ${b.time || b.place || b.w != null || b.h != null || b.head != null || b.notes ? `<dl class="birth">${birthItems}</dl>${b.notes ? `<p class="note" style="margin:0;font-size:.9rem;overflow-wrap:anywhere">${esc(b.notes)}</p>` : ""}` : `<p class="empty">No birth details yet. Add time, place, weight and length with Edit.</p>`}</section>`;
+    return `${dueBanner}<div class="stats">${stats}</div>
+      <section class="card chart">
+        <div class="card-head"><h2>${metric === "h" ? "Height" : "Weight"} by age</h2>
+          <div class="actions">
+            <div class="seg" role="group" aria-label="Measure"><button type="button" data-metric="h" aria-pressed="${metric === "h"}">Height</button><button type="button" data-metric="w" aria-pressed="${metric === "w"}">Weight</button></div>
+            ${Object.keys(kids).length > 1 ? `<div class="seg" role="group" aria-label="Who"><button type="button" data-cm="self" aria-pressed="${chartMode === "self"}">${esc(k.name)}</button><button type="button" data-cm="all" aria-pressed="${chartMode === "all"}">All</button></div>` : ""}
+          </div></div>
+        ${renderChart(k)}
+      </section>
+      ${renderCompare()}
+      ${birthCard}`;
+  }
+
+  function growthTab(k) {
+    const now = today(), rows = [...(k.measures || [])].sort((a, b) => b.d.localeCompare(a.d));
+    const em = editM && (k.measures || []).find((x) => x.id === editM);
+    const pctTag = (key, m) => { const p = typeof m[key] === "number" && percentile(k, key, m[key], m.d); return p ? `<small class="pc">${p}</small>` : ""; };
+    const list = rows.length ? `<ul class="mlist">${rows.map((m) => `<li class="mrow${m.id === editM ? " editing" : ""}">
+        <div class="when"><div>${k.dob ? ageLabel(k.dob, m.d) : fmtDate(m.d)}</div><div class="meta">${k.dob ? fmtDate(m.d) : ""}</div></div>
+        <div class="vals"><span class="num">${typeof m.h === "number" ? m.h.toFixed(1) + "<small> cm</small>" : "–"}${pctTag("h", m)}</span><span class="num">${typeof m.w === "number" ? kg(m.w) + "<small> kg</small>" : "–"}${pctTag("w", m)}</span></div>
+        ${rowBtns("m", m.id, "data-editm")}</li>`).join("")}</ul>` : `<p class="empty">No measurements yet.</p>`;
+    return `<section class="card"><div class="card-head"><h2>Measurements</h2>${Object.keys(kids).length > 1 ? `<button class="linkish" type="button" id="openBatch2">Measure everyone</button>` : ""}</div>
+      <form class="grid2${em ? " is-editing" : ""}" id="mForm" novalidate>
+        ${em ? `<p class="editing-note span">Editing the ${fmtDate(em.d)} measurement</p>` : ""}
+        <label class="f span" for="mDate">Date<input id="mDate" type="date" value="${em ? em.d : now}" max="${now}" required></label>
+        <label class="f" for="mH">Height (cm)<input id="mH" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 118.5" value="${em && typeof em.h === "number" ? em.h : ""}"></label>
+        <label class="f" for="mW">Weight (kg)<input id="mW" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 3.02" value="${em && typeof em.w === "number" ? em.w : ""}"></label>
+        <button class="btn${em ? "" : " span"}" type="submit">${em ? "Save changes" : "Add measurement"}</button>
+        ${em ? `<button class="btn ghost" type="button" id="cancelM">Cancel</button>` : ""}
+      </form>${list}</section>`;
+  }
+
+  function milestonesTab(k) {
+    const now = today(), ms = [...(k.milestones || [])].sort((a, b) => b.d.localeCompare(a.d));
+    const em = editMs && (k.milestones || []).find((x) => x.id === editMs);
+    const list = ms.length ? `<ul class="timeline">${ms.map((m) => `<li class="ms${m.id === editMs ? " editing" : ""}"><div style="min-width:0">
+        <div class="when">${whenLine(k, m.d)}</div><div class="t">${esc(m.t)}</div><div class="meta"><span class="tag">${esc(m.c)}</span></div>
+        ${m.n ? `<div class="note">${esc(m.n)}</div>` : ""}
+      </div>${rowBtns("ms", m.id, "data-editms")}</li>`).join("")}</ul>` : `<p class="empty">No milestones yet. First words, lost teeth, first goal: log them here.</p>`;
+    return `<section class="card"><h2>Milestones</h2>
+      <form class="grid2${em ? " is-editing" : ""}" id="msForm">
+        ${em ? `<p class="editing-note span">Editing "${esc(em.t)}"</p>` : ""}
+        <label class="f" for="msDate">Date<input id="msDate" type="date" value="${em ? em.d : now}" max="${now}" required></label>
+        <label class="f" for="msCat">Type<select id="msCat">${CATS.map((c) => `<option${em && em.c === c ? " selected" : ""}>${c}</option>`).join("")}</select></label>
+        <label class="f span" for="msTitle">What happened<input id="msTitle" type="text" maxlength="120" placeholder="e.g. Lost first tooth" required value="${em ? esc(em.t) : ""}"></label>
+        <label class="f span" for="msNote">Note (optional)<textarea id="msNote" maxlength="500" rows="2">${em ? esc(em.n) : ""}</textarea></label>
+        <button class="btn${em ? "" : " span"}" type="submit">${em ? "Save changes" : "Add milestone"}</button>
+        ${em ? `<button class="btn ghost" type="button" id="cancelMs">Cancel</button>` : ""}
+      </form>${list}</section>`;
+  }
+
+  function sizesTab(k) {
+    const now = today(), cur = latestBy(k.sizes, "cat"), rows = [...(k.sizes || [])].sort((a, b) => b.d.localeCompare(a.d));
+    const em = editSz && (k.sizes || []).find((x) => x.id === editSz);
+    const tiles = SIZE_CATS.filter((c) => cur[c]).map((c) => `<div class="size-tile"><div class="l">${c}</div><div class="v">${esc(cur[c].size)}</div><div class="d">since ${fmtShort(cur[c].d)}</div></div>`).join("");
+    return `<section class="card"><h2>Current sizes</h2>${tiles ? `<div class="sizes-now">${tiles}</div>` : `<p class="empty">No sizes yet. Log clothes and shoe sizes as they change.</p>`}</section>
+      <section class="card"><h2>${em ? "Edit size" : "Log a size"}</h2>
+        <form class="grid2${em ? " is-editing" : ""}" id="szForm">
+          <label class="f" for="szDate">Date<input id="szDate" type="date" value="${em ? em.d : now}" max="${now}" required></label>
+          <label class="f" for="szCat">What<select id="szCat">${SIZE_CATS.map((c) => `<option${em && em.cat === c ? " selected" : ""}>${c}</option>`).join("")}</select></label>
+          <label class="f span" for="szSize">Size<input id="szSize" type="text" maxlength="30" placeholder="e.g. 8, or US 13 for shoes" required value="${em ? esc(em.size) : ""}"></label>
+          <label class="f span" for="szNote">Note (optional)<input id="szNote" type="text" maxlength="120" placeholder="e.g. Brand runs small" value="${em ? esc(em.note) : ""}"></label>
+          <button class="btn${em ? "" : " span"}" type="submit">${em ? "Save changes" : "Add size"}</button>
+          ${em ? `<button class="btn ghost" type="button" id="cancelSz">Cancel</button>` : ""}
+        </form>
+        ${rows.length ? `<ul class="timeline">${rows.map((s) => `<li class="ms${s.id === editSz ? " editing" : ""}"><div style="min-width:0"><div class="when">${whenLine(k, s.d)}</div><div class="t">${esc(s.cat)}: ${esc(s.size)}</div>${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}</div>${rowBtns("sz", s.id, "data-editsz")}</li>`).join("")}</ul>` : ""}
+      </section>`;
+  }
+
+  function healthTab(k) {
+    const now = today(), teeth = k.teeth || {};
+    const tState = (key) => { const t = teeth[key] || {}; return t.out ? "out" : t.in ? "in" : ""; };
+    const tInCount = Object.values(teeth).filter((t) => t.in || t.out).length, tOutCount = Object.values(teeth).filter((t) => t.out).length;
+    const et = editTooth ? (teeth[editTooth] || {}) : null;
+    const etLabel = editTooth ? `${QUADS.find((x) => x[0] === editTooth.slice(0, 2))[1]} ${TOOTH_TYPES[+editTooth.slice(2) - 1].toLowerCase()}` : "";
+    const toothName = (key) => { const q = QUADS.find((x) => x[0] === key.slice(0, 2))[1], n = TOOTH_TYPES[+key.slice(2) - 1]; return `${q} ${n.toLowerCase()}`; };
+    // Mouth diagram, drawn as if facing the child: the child's right is on the left of the picture.
+    const TW = [[18, 25, 6], [15, 22, 5], [16, 24, 8], [26, 24, 8], [30, 26, 9]]; // width along the arch, depth, corner radius
+    const ANG = [6, 18, 31, 49, 72];
+    const toothShape = (key, x, y, rot, [w, h, r]) => {
+      const st = tState(key), sel = editTooth === key;
+      return `<g class="tth ${st}${sel ? " sel" : ""}" data-tooth="${key}" role="button" tabindex="0" aria-label="${esc(toothName(key))}${st === "out" ? ", fell out" : st === "in" ? ", came through" : ""}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)})">
+        <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="${r}"/>${st === "out" ? `<path d="M-4.5 -4.5 4.5 4.5M4.5 -4.5 -4.5 4.5" class="x"/>` : ""}</g>`;
+    };
+    let mouth = "";
+    [["U", 130, -1], ["L", 164, 1]].forEach(([jaw, cy, dir]) => {
+      ANG.forEach((a, i) => {
+        const rad = a * Math.PI / 180, dx = 106 * Math.sin(rad), dy = 96 * Math.cos(rad) * dir;
+        mouth += toothShape(`${jaw}R${i + 1}`, 170 - dx, cy + dy, dir < 0 ? -a : a, TW[i]);  // picture left = child's right
+        mouth += toothShape(`${jaw}L${i + 1}`, 170 + dx, cy + dy, dir < 0 ? a : -a, TW[i]);
+      });
+    });
+    const mouthSvg = `<svg class="mouth" viewBox="0 6 340 292" aria-label="Baby teeth, top and bottom">
+      <text x="170" y="90" text-anchor="middle" class="lab">Top</text>
+      <text x="170" y="214" text-anchor="middle" class="lab">Bottom</text>
+      <text x="8" y="151" class="lab">Right</text><text x="332" y="151" text-anchor="end" class="lab">Left</text>
+      ${mouth}
+    </svg>`;
+    const recorded = Object.entries(teeth).filter(([, t]) => t.in || t.out).sort((a, b) => (a[1].in || a[1].out).localeCompare(b[1].in || b[1].out));
+    const teethCard = `<section class="card"><div class="card-head"><h2>Baby teeth</h2><span class="hint">${tInCount} of 20 through · ${tOutCount} lost</span></div>
+      <div class="mouthwrap">${mouthSvg}</div>
+      <div class="tlegend"><span><i class="lg none"></i>Not yet</span><span><i class="lg in"></i>Came through</span><span><i class="lg out"></i>Fell out</span></div>
+      ${editTooth ? `<form class="grid2 is-editing" id="toothForm"><p class="editing-note span">${esc(etLabel[0].toUpperCase() + etLabel.slice(1))}</p>
+        <label class="f" for="tIn">Came through<input id="tIn" type="date" max="${now}" value="${esc(et.in || "")}"></label>
+        <label class="f" for="tOut">Fell out<input id="tOut" type="date" max="${now}" value="${esc(et.out || "")}"></label>
+        <button class="btn" type="submit">Save tooth</button><button class="btn ghost" type="button" id="cancelTooth">Close</button>
+        ${et.in || et.out ? `<button class="linkish span" type="button" id="clearTooth">Clear this tooth</button>` : ""}</form>`
+        : `<p class="hint">Tap a tooth to record when it came through or fell out. The picture faces your child, so their right is on your left. Front teeth sit at the top and bottom of each arch, molars at the back.</p>`}
+      ${recorded.length ? `<ul class="timeline">${recorded.map(([key, t]) => `<li class="ms"><div style="min-width:0"><div class="t">${esc(toothName(key)[0].toUpperCase() + toothName(key).slice(1))}</div>
+        <div class="when">${t.in ? `In ${k.dob ? `at <span class="age">${esc(ageLabel(k.dob, t.in))}</span> · ` : ""}${fmtDate(t.in)}` : ""}${t.in && t.out ? "<br>" : ""}${t.out ? `Out ${k.dob ? `at <span class="age">${esc(ageLabel(k.dob, t.out))}</span> · ` : ""}${fmtDate(t.out)}` : ""}</div></div>
+        <div class="rowbtns"><button class="linkish" type="button" data-tooth="${key}">Edit</button></div></li>`).join("")}</ul>` : ""}
+    </section>`;
+    const ev = editV && (k.visits || []).find((x) => x.id === editV), visits = [...(k.visits || [])].sort((a, b) => b.d.localeCompare(a.d));
+    const visitCard = `<section class="card"><h2>Visits and illnesses</h2>
+      <form class="grid2${ev ? " is-editing" : ""}" id="vForm">
+        <label class="f" for="vDate">Date<input id="vDate" type="date" value="${ev ? ev.d : now}" max="${now}" required></label>
+        <label class="f" for="vType">Type<select id="vType">${VISIT_TYPES.map((c) => `<option${ev && ev.type === c ? " selected" : ""}>${c}</option>`).join("")}</select></label>
+        <label class="f span" for="vTitle">What for<input id="vTitle" type="text" maxlength="120" placeholder="e.g. Ear infection" required value="${ev ? esc(ev.t) : ""}"></label>
+        <label class="f span" for="vNote">Notes (optional)<textarea id="vNote" maxlength="800" rows="2" placeholder="Doctor, medicine, what they said">${ev ? esc(ev.n) : ""}</textarea></label>
+        <button class="btn${ev ? "" : " span"}" type="submit">${ev ? "Save changes" : "Add visit"}</button>
+        ${ev ? `<button class="btn ghost" type="button" id="cancelV">Cancel</button>` : ""}
+      </form>
+      ${visits.length ? `<ul class="timeline">${visits.map((v) => `<li class="ms${v.id === editV ? " editing" : ""}"><div style="min-width:0"><div class="when">${whenLine(k, v.d)}</div><div class="t">${esc(v.t)}</div><div class="meta"><span class="tag">${esc(v.type)}</span></div>${v.n ? `<div class="note">${esc(v.n)}</div>` : ""}</div>${rowBtns("v", v.id, "data-editv")}</li>`).join("")}</ul>` : ""}
+    </section>`;
+
+    const notesCard = `<section class="card"><h2>Allergies and medical notes</h2>
+      <form class="stack" id="notesForm"><label class="f" for="hNotes">Anything a carer or doctor should know<textarea id="hNotes" rows="3" maxlength="2000" placeholder="e.g. Allergic to penicillin. Mild asthma, uses a puffer.">${esc(k.healthNotes || "")}</textarea></label>
+      <div><button class="btn small" type="submit">Save notes</button></div></form></section>`;
+    return notesCard + teethCard + visitCard;
+  }
+
+  function renderChild() {
+    renderTabbar();
+    const host = $("child"), k = kids[selected];
+    if (!k) {
+      host.innerHTML = Object.keys(kids).length ? "" : `<div class="card"><h2>Add your first child</h2><p class="empty">Add each child with their name and birthday. Then log heights, weights, milestones, sizes and health details as they happen.</p><div><button class="btn" type="button" id="addKid2">+ Add child</button></div></div>`;
+      return;
+    }
+    host.style.setProperty("--c", cvar(k.color));
+    const head = `<div class="child-head"><div><div class="name">${esc(k.name)}</div><div class="sub">${k.dob ? `${ageLabel(k.dob, today())} old` : ""}${k.example ? " · example profile" : ""}</div></div>
+      <button class="btn small ghost" type="button" id="editKid">Edit ${esc(k.name)}</button></div>`;
+    const body = tab === "measures" ? growthTab(k) : tab === "milestones" ? milestonesTab(k) : tab === "sizes" ? sizesTab(k) : tab === "health" ? healthTab(k) : overviewTab(k);
+    host.innerHTML = head + body;
+  }
+
+  // ---------- sheets: add/edit child, measure everyone ----------
+  function renderSheet() {
+    const host = $("sheetHost");
+    if (!sheet) { host.innerHTML = ""; return; }
+    if (sheet.mode === "batch") {
+      const now = today();
+      host.innerHTML = `<form class="sheet" id="batchForm">
+        <div class="panel-head"><h2>Measure everyone</h2><button class="linkish" type="button" id="cancelSheet2">Close</button></div>
+        <label class="f" for="btDate">Date<input id="btDate" type="date" value="${now}" max="${now}" required></label>
+        <div class="batch">${sorted().map(([id, k]) => { const l = lastMeasured(k), due = dueInfo(k);
+          return `<div class="brow" style="--c:${cvar(k.color)}"><div class="bname"><span><span class="dot"></span>${esc(k.name)}</span><small class="${due ? "status-late" : ""}">${l ? `Last measured ${ago(l)}` : "Not measured yet"}</small></div>
+            <label class="f" for="btH_${id}">Height (cm)<input id="btH_${id}" type="text" inputmode="decimal" autocomplete="off" placeholder="cm"></label>
+            <label class="f" for="btW_${id}">Weight (kg)<input id="btW_${id}" type="text" inputmode="decimal" autocomplete="off" placeholder="kg"></label></div>`; }).join("")}</div>
+        <p class="hint">Leave a box empty to skip it.</p>
+        <div class="actions"><button class="btn" type="submit">Save measurements</button><button class="btn ghost" type="button" id="cancelSheet">Cancel</button></div>
+      </form>`;
+      return;
+    }
+    const k = sheet.mode === "edit" ? kids[sheet.id] : { name: "", dob: "", sex: "", color: COLORS.find((c) => !Object.values(kids).some((x) => x.color === c)) || "blue" };
+    sheet.color = sheet.color || k.color;
+    const armed = pendingDelete === `kid:${sheet.id}`;
+    host.innerHTML = `<form class="sheet" id="kidForm">
+      <div class="panel-head"><h2>${sheet.mode === "edit" ? `Edit ${esc(k.name)}` : "Add a child"}</h2><button class="linkish" type="button" id="cancelSheet2">Close</button></div>
+      <div class="grid2">
+        <label class="f" for="kName">Name<input id="kName" type="text" maxlength="30" value="${esc(k.name)}" required></label>
+        <label class="f" for="kDob">Birthday<input id="kDob" type="date" max="${today()}" value="${esc(k.dob)}" required></label>
+        <label class="f span" for="kSex">Growth charts<select id="kSex"><option value=""${!k.sex ? " selected" : ""}>Not set</option><option value="m"${k.sex === "m" ? " selected" : ""}>Boy charts</option><option value="f"${k.sex === "f" ? " selected" : ""}>Girl charts</option></select></label>
+      </div>
+      <p class="hint">Growth charts differ for boys and girls. This is only used for percentiles.</p>
+      <h3 class="eyebrow" style="margin-top:4px">Birth details</h3>
+      <div class="grid2">
+        <label class="f" for="bTime">Time of birth<input id="bTime" type="time" value="${esc(k.birth?.time)}"></label>
+        <label class="f" for="bW">Weight (kg)<input id="bW" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 3.02" value="${k.birth?.w ?? ""}"></label>
+        <label class="f" for="bH">Length (cm)<input id="bH" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 51" value="${k.birth?.h ?? ""}"></label>
+        <label class="f" for="bHead">Head (cm)<input id="bHead" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 35" value="${k.birth?.head ?? ""}"></label>
+        <label class="f span" for="bPlace">Where<input id="bPlace" type="text" maxlength="120" placeholder="e.g. Wollongong Hospital" value="${esc(k.birth?.place)}"></label>
+        <label class="f span" for="bNotes">Notes<textarea id="bNotes" maxlength="1000" rows="2" placeholder="Doctor or midwife, weeks' gestation, the story of the day">${esc(k.birth?.notes)}</textarea></label>
+      </div>
+      <div class="f" style="font-size:.74rem;color:var(--muted);font-weight:600">Colour</div>
+      <div class="swatches">${COLORS.map((c) => `<button type="button" class="sw" data-color="${c}" aria-label="${c}" aria-pressed="${sheet.color === c}" style="--c:${cvar(c)}"></button>`).join("")}</div>
+      <div class="actions">
+        <button class="btn" type="submit">${sheet.mode === "edit" ? "Save" : "Add child"}</button>
+        <button class="btn ghost" type="button" id="cancelSheet">Cancel</button>
+        ${sheet.mode === "edit" ? `<span style="flex:1"></span><button class="btn small ${armed ? "danger" : "ghost"}" type="button" data-del="kid:${sheet.id}">${armed ? "Delete all their records?" : "Delete child"}</button>` : ""}
+      </div>
+    </form>`;
+  }
+
+  function render(fresh = []) {
+    const ids = Object.keys(kids);
+    if (!kids[selected]) selected = sorted()[0]?.[0] || null;
+    $("exampleBanner").hidden = !Object.values(kids).some((k) => k.example);
+    paint(() => { renderChips(); renderSheet(); renderChild(); }, fresh);
+    const n = Object.values(kids).reduce((a, k) => a + (k.measures || []).length, 0), m = Object.values(kids).reduce((a, k) => a + (k.milestones || []).length, 0);
+    $("dataSummary").textContent = ids.length ? `${ids.length} ${ids.length === 1 ? "child" : "children"} · ${n} measurements · ${m} milestones` : "No children added yet.";
+    document.body.style.overflow = sheet || !$("settings").hidden ? "hidden" : "";
+  }
+
+  // ---------- events ----------
+  document.addEventListener("click", async (e) => {
+    const t = e.target.closest("button, [data-kid], [data-tooth]"); if (!t) return;
+    if (t.dataset.kid) { if (t.dataset.kid !== selected) { editM = editMs = editSz = editV = editTooth = null; selected = t.dataset.kid; pendingDelete = null; sheet = null; render(ALL_IDS); } return; }
+    if (t.id === "addKid" || t.id === "addKid2") { sheet = { mode: "add" }; pendingDelete = null; render(SHEET_IDS); $("kName")?.focus(); return; }
+    if (t.id === "editKid" || t.id === "editKid2") { sheet = { mode: "edit", id: selected }; pendingDelete = null; render(SHEET_IDS); $("sheetHost").scrollTop = 0; return; }
+    if (t.id === "openBatch" || t.id === "openBatch2") { sheet = { mode: "batch" }; render(SHEET_IDS); $("sheetHost").scrollTop = 0; return; }
+    if (t.id === "cancelSheet" || t.id === "cancelSheet2") { sheet = null; pendingDelete = null; render(SHEET_IDS); return; }
+    if (t.dataset.editm) { editM = t.dataset.editm; pendingDelete = null; render(M_IDS); $("mForm")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    if (t.dataset.editms) { editMs = t.dataset.editms; pendingDelete = null; render(MS_IDS); $("msForm")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    if (t.dataset.editsz) { editSz = t.dataset.editsz; pendingDelete = null; render(SZ_IDS); $("szForm")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    if (t.dataset.editv) { editV = t.dataset.editv; pendingDelete = null; render(V_IDS); $("vForm")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    if (t.dataset.tooth) { editTooth = editTooth === t.dataset.tooth ? null : t.dataset.tooth; render(T_IDS); $("toothForm")?.scrollIntoView({ behavior: "smooth", block: "nearest" }); return; }
+    if (t.id === "cancelM") { editM = null; render(M_IDS); return; }
+    if (t.id === "cancelMs") { editMs = null; render(MS_IDS); return; }
+    if (t.id === "cancelSz") { editSz = null; render(SZ_IDS); return; }
+    if (t.id === "cancelV") { editV = null; render(V_IDS); return; }
+    if (t.id === "cancelTooth") { editTooth = null; render(T_IDS); return; }
+    if (t.id === "clearTooth") { const key = editTooth; editTooth = null; update(selected, (k) => { if (k.teeth) delete k.teeth[key]; }, T_IDS); toast("Tooth cleared."); return; }
+    if (t.dataset.color) { sheet.color = t.dataset.color; document.querySelectorAll(".sw").forEach((b) => b.setAttribute("aria-pressed", b.dataset.color === sheet.color)); return; }
+    if (t.dataset.tab) { if (tab !== t.dataset.tab) { tab = t.dataset.tab; pendingDelete = null; paint(renderChild); window.scrollTo({ top: 0 }); } return; }
+    if (t.dataset.metric) { metric = t.dataset.metric; paint(renderChild); return; }
+    if (t.dataset.cm) { chartMode = t.dataset.cm; paint(renderChild); return; }
+    if (t.id === "keepExamples") { Object.entries(kids).filter(([, k]) => k.example).forEach(([id]) => { delete kids[id].example; }); persist(); render(); toast("Examples kept. Tap Edit to rename each child."); return; }
+    if (t.id === "clearExamples") {
+      if (pendingDelete !== "examples") { pendingDelete = "examples"; t.textContent = "Tap again to clear"; return; }
+      pendingDelete = null; Object.entries(kids).filter(([, k]) => k.example).forEach(([id]) => { delete kids[id]; }); persist(); render(); toast("Examples cleared."); return;
+    }
+    if (t.dataset.del) {
+      const key = t.dataset.del;
+      if (pendingDelete !== key) { pendingDelete = key; render(); return; }
+      pendingDelete = null;
+      const [kind, id] = key.split(":");
+      if (kind === "kid") {
+        const k = kids[id];
+        delete kids[id]; sheet = null; persist(); render(ALL_IDS); toast(`${k.name} removed.`);
+      } else if (kind === "m") update(selected, (k) => { k.measures = (k.measures || []).filter((m) => m.id !== id); });
+      else if (kind === "ms") update(selected, (k) => { k.milestones = (k.milestones || []).filter((x) => x.id !== id); });
+      else if (kind === "sz") update(selected, (k) => { k.sizes = (k.sizes || []).filter((x) => x.id !== id); });
+      else if (kind === "v") update(selected, (k) => { k.visits = (k.visits || []).filter((x) => x.id !== id); });
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const g = e.target.closest?.("g[data-tooth]"); if (!g || (e.key !== "Enter" && e.key !== " ")) return;
+    e.preventDefault(); g.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  document.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (f.id === "kidForm") {
+      const name = $("kName").value.trim(), dob = $("kDob").value;
+      if (!name || !dob) { toast("Add a name and birthday."); return; }
+      const birth = { time: $("bTime").value, place: $("bPlace").value.trim(), w: num($("bW").value), h: num($("bH").value), head: num($("bHead").value), notes: $("bNotes").value.trim() };
+      const sex = $("kSex").value;
+      if (sheet.mode === "add") {
+        const id = uid();
+        kids[id] = { name, dob, sex, birth, color: sheet.color, order: Object.keys(kids).length, measures: [], milestones: [] };
+        editM = editMs = editSz = editV = editTooth = null; selected = id; sheet = null; persist(); render(ALL_IDS); toast(`${name} added.`);
+      } else { const id = sheet.id, color = sheet.color; sheet = null; update(id, (k) => { Object.assign(k, { name, dob, sex, birth, color: color || k.color }); }, SHEET_IDS); toast("Saved."); }
+      return;
+    }
+    if (f.id === "batchForm") {
+      const d = $("btDate").value; if (!d) { toast("Pick a date."); return; }
+      let n = 0;
+      sorted().forEach(([id, k]) => {
+        const h = num($(`btH_${id}`)?.value), w = num($(`btW_${id}`)?.value);
+        if (h == null && w == null) return;
+        const m = { id: uid(), d }; if (h != null) m.h = Math.round(h * 10) / 10; if (w != null) m.w = Math.round(w * 100) / 100;
+        kids[id] = { ...k, measures: [...(k.measures || []), m] }; n++;
+      });
+      if (!n) { toast("Enter at least one height or weight."); return; }
+      sheet = null; persist(); render(SHEET_IDS); toast(`Saved measurements for ${n} ${n === 1 ? "child" : "children"}.`);
+      return;
+    }
+    if (f.id === "mForm") {
+      const h = num($("mH").value), w = num($("mW").value), d = $("mDate").value;
+      if (!d) { toast("Pick a date."); return; }
+      if (h == null && w == null) { toast("Enter a height, a weight, or both."); return; }
+      const editing = editM && (kids[selected].measures || []).some((x) => x.id === editM);
+      const m = { id: editing ? editM : uid(), d }; if (h != null) m.h = Math.round(h * 10) / 10; if (w != null) m.w = Math.round(w * 100) / 100;
+      editM = null;
+      update(selected, (k) => { k.measures = editing ? k.measures.map((x) => (x.id === m.id ? m : x)) : [...(k.measures || []), m]; }, M_IDS);
+      toast(editing ? "Measurement updated." : "Measurement added.");
+      return;
+    }
+    if (f.id === "msForm") {
+      const title = $("msTitle").value.trim(); if (!title) return;
+      const editing = editMs && (kids[selected].milestones || []).some((x) => x.id === editMs);
+      const m = { id: editing ? editMs : uid(), d: $("msDate").value, c: $("msCat").value, t: title, n: $("msNote").value.trim() };
+      editMs = null;
+      update(selected, (k) => { k.milestones = editing ? k.milestones.map((x) => (x.id === m.id ? m : x)) : [...(k.milestones || []), m]; }, MS_IDS);
+      toast(editing ? "Milestone updated." : "Milestone added.");
+      return;
+    }
+    if (f.id === "szForm") {
+      const size = $("szSize").value.trim(); if (!size) return;
+      const editing = editSz && (kids[selected].sizes || []).some((x) => x.id === editSz);
+      const s = { id: editing ? editSz : uid(), d: $("szDate").value, cat: $("szCat").value, size, note: $("szNote").value.trim() };
+      editSz = null;
+      update(selected, (k) => { k.sizes = editing ? k.sizes.map((x) => (x.id === s.id ? s : x)) : [...(k.sizes || []), s]; }, SZ_IDS);
+      toast(editing ? "Size updated." : "Size added.");
+      return;
+    }
+    if (f.id === "vForm") {
+      const title = $("vTitle").value.trim(); if (!title) return;
+      const editing = editV && (kids[selected].visits || []).some((x) => x.id === editV);
+      const v = { id: editing ? editV : uid(), d: $("vDate").value, type: $("vType").value, t: title, n: $("vNote").value.trim() };
+      editV = null;
+      update(selected, (k) => { k.visits = editing ? k.visits.map((x) => (x.id === v.id ? v : x)) : [...(k.visits || []), v]; }, V_IDS);
+      toast(editing ? "Visit updated." : "Visit added.");
+      return;
+    }
+    if (f.id === "toothForm") {
+      const key = editTooth, tin = $("tIn").value, tout = $("tOut").value;
+      if (tin && tout && tout < tin) { toast("The fell-out date is before it came through."); return; }
+      editTooth = null;
+      update(selected, (k) => { k.teeth = k.teeth || {}; if (tin || tout) k.teeth[key] = { in: tin, out: tout }; else delete k.teeth[key]; }, T_IDS);
+      toast("Tooth saved.");
+      return;
+    }
+    if (f.id === "notesForm") {
+      const v = $("hNotes").value.trim();
+      update(selected, (k) => { k.healthNotes = v; }, H_IDS);
+      toast("Notes saved.");
+    }
+  });
+
+  // ---------- backup & restore ----------
+  async function backupText() { return JSON.stringify({ app: "doorframe", v: 2, exported: today(), settings, kids }); }
+  async function restoreFrom(text) {
+    let data; try { data = JSON.parse(text); } catch { return false; }
+    const src = data && typeof data.kids === "object" ? data.kids : data;
+    if (!src || typeof src !== "object") return false;
+    let n = 0;
+    Object.entries(src).forEach(([id, k]) => { if (k && typeof k.name === "string") { kids[id] = k; n++; } });
+    if (!n) return false;
+    if (data.settings) { Object.assign(settings, data.settings); saveSettings(); syncRemindSel(); }
+    persist(); render(); return n;
+  }
+  $("importFile").addEventListener("change", async (e) => {
+    const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+    const n = await restoreFrom(await file.text());
+    toast(n ? `Restored ${n} ${n === 1 ? "child" : "children"}.` : "That file isn't a Doorframe backup.");
+  });
+  $("restorePaste").addEventListener("click", async () => {
+    const n = await restoreFrom($("pasteBackup").value.trim());
+    if (n) { $("pasteBackup").value = ""; toast(`Restored ${n} ${n === 1 ? "child" : "children"}.`); }
+    else toast("That text isn't a Doorframe backup. Paste the whole thing, starting with {.");
+  });
+  $("copyBackup").addEventListener("click", async () => {
+    const text = await backupText();
+    navigator.clipboard.writeText(text).then(() => toast("Backup copied. Paste it into a note or email to keep it safe."), () => toast("Couldn't copy on this device. Use Save backup file."));
+  });
+  $("saveBackup").addEventListener("click", async () => {
+    const name = `doorframe-backup-${today()}.json`;
+    const file = new File([await backupText()], name, { type: "application/json" });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Doorframe backup" }); return; } }
+    catch (err) { if (err && err.name === "AbortError") return; }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    toast("Backup saved.");
+  });
+  $("wipeAll").addEventListener("click", (e) => {
+    const b = e.currentTarget;
+    if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to delete everything"; b.classList.add("danger"); setTimeout(() => { b.dataset.armed = ""; b.textContent = "Delete all data"; b.classList.remove("danger"); }, 4000); return; }
+    kids = {}; selected = null; persist(); render(ALL_IDS); toast("All data deleted.");
+    b.dataset.armed = ""; b.textContent = "Delete all data"; b.classList.remove("danger");
+  });
+
+  // ---------- settings ----------
+  function syncRemindSel() { $("remindSel").value = String(settings.remind || 0); }
+  $("remindSel").addEventListener("change", (e) => { settings.remind = +e.target.value; saveSettings(); render(); toast(settings.remind ? "Reminder updated." : "Reminders off."); });
+  function openSettings() { syncRemindSel(); $("settings").hidden = false; $("settings").scrollTop = 0; document.body.style.overflow = "hidden"; refreshStorageNote(); }
+  function closeSettings() { $("settings").hidden = true; document.body.style.overflow = sheet ? "hidden" : ""; }
+  $("settingsBtn").addEventListener("click", openSettings);
+  $("closeSettings").addEventListener("click", closeSettings);
+  async function refreshStorageNote() {
+    try { if (navigator.storage?.persisted && await navigator.storage.persisted()) $("storageNote").textContent = "Everything is stored on this device only, and the browser has agreed to keep it. Save a backup now and then in case you change phones."; } catch {}
+  }
+
+  // ---------- install ----------
+  const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let installEvt = null;
+  function refreshInstall() {
+    if (isStandalone()) { $("installCard").hidden = true; return; }
+    if (installEvt) { $("installText").textContent = "Add Doorframe to your home screen so it opens full screen and works offline."; $("installBtn").hidden = false; }
+    else if (isIOS) { $("installText").innerHTML = "In Safari, tap the <strong>Share</strong> button, then <strong>Add to Home Screen</strong>. It will open full screen and work offline."; $("installBtn").hidden = true; }
+    else { $("installText").textContent = "Use your browser menu and choose Install app or Add to Home screen."; $("installBtn").hidden = true; }
+  }
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; refreshInstall(); });
+  window.addEventListener("appinstalled", () => { installEvt = null; refreshInstall(); toast("Doorframe installed."); });
+  $("installBtn").addEventListener("click", async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch {} installEvt = null; refreshInstall(); });
+  refreshInstall();
+
+  // ---------- offline + updates ----------
+  const APP_VERSION = "1.4.2";
+  $("appVersion").textContent = "v" + APP_VERSION;
+  let swReg = null;
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    navigator.serviceWorker.register("sw.js").then((reg) => {
+      swReg = reg;
+      if (reg.waiting && navigator.serviceWorker.controller) $("updateBar").hidden = false;
+      reg.addEventListener("updatefound", () => { const nw = reg.installing; nw && nw.addEventListener("statechange", () => { if (nw.state === "installed" && navigator.serviceWorker.controller) $("updateBar").hidden = false; }); });
+    }).catch(() => {});
+    const hadController = !!navigator.serviceWorker.controller;
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (!hadController || refreshing) return; refreshing = true; location.reload(); });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { swReg?.update().catch(() => {}); render(); } });
+  }
+  $("updateNow").addEventListener("click", () => { if (swReg?.waiting) swReg.waiting.postMessage({ type: "SKIP_WAITING" }); else location.reload(); });
+  $("checkUpdate").addEventListener("click", async () => {
+    if (!swReg) { toast("Updates are checked automatically once the app is installed."); return; }
+    try { await swReg.update(); } catch {}
+    setTimeout(() => toast(swReg.waiting || swReg.installing ? "Update found." : "You have the latest version."), 800);
+  });
+
+  // ---------- boot ----------
+  loadSettings(); kids = loadLocal(); render();
+  window.addEventListener("storage", (e) => { if (e.key === LS_KEY) { kids = loadLocal(); render(); } });
+})();
+</script>
+</body>
+</html>
